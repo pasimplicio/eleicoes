@@ -44,6 +44,9 @@
     },
     "api/divulgacand.ts": {
       "maxDuration": 15
+    },
+    "api/pesquisas.ts": {
+      "maxDuration": 60
     }
   },
   "regions": [

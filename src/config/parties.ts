@@ -2,7 +2,7 @@
 // Chave: sigla exatamente como o TSE publica no início do campo de coligação.
 const PARTY_COLORS: Record<string, string> = {
   PT: '#c8102e',
-  PL: '#1b3f8b',
+  PL: '#2a55b5',
   'UNIÃO': '#2b7bd6',
   PSD: '#f28c28',
   MDB: '#2e8b57',
@@ -45,4 +45,9 @@ const FALLBACK = ['#64748b', '#8b5cf6', '#0ea5e9', '#14b8a6', '#a3a3a3', '#f43f5
 export function partyColor(sigla: string | undefined, index = 0): string {
   if (sigla && PARTY_COLORS[sigla]) return PARTY_COLORS[sigla]
   return FALLBACK[index % FALLBACK.length]
+}
+
+/** Cor do partido se ele estiver na paleta; undefined caso contrário. */
+export function knownPartyColor(sigla: string | undefined): string | undefined {
+  return sigla ? PARTY_COLORS[sigla] : undefined
 }

@@ -185,3 +185,18 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Séries das pesquisas: cor do candidato em --c; no tema escuro, um passo mais claro. */
+.poll-series polyline {
+  stroke: var(--c);
+}
+.poll-series .poll-dot {
+  fill: var(--c);
+  stroke: var(--color-surface);
+}
+.dark .poll-series polyline {
+  stroke: color-mix(in oklab, var(--c) 78%, white);
+}
+.dark .poll-series .poll-dot {
+  fill: color-mix(in oklab, var(--c) 78%, white);
+}
