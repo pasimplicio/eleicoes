@@ -47,7 +47,11 @@ export interface Snapshot {
   cargos: Record<string, Record<string, SnapshotCandidate[]>>
 }
 
-const byName = (a: Candidate, b: Candidate) => a.name.localeCompare(b.name, 'pt-BR')
+const TONE_ORDER = { ok: 0, none: 0, warn: 1, off: 2 } as const
+
+/** Aptos primeiro, contestados depois, fora da disputa por último; em cada grupo, por nome. */
+const byName = (a: Candidate, b: Candidate) =>
+  TONE_ORDER[statusTone(a.status)] - TONE_ORDER[statusTone(b.status)] || a.name.localeCompare(b.name, 'pt-BR')
 
 function fromSnapshot(list: SnapshotCandidate[]): Candidate[] {
   return list
@@ -122,7 +126,7 @@ export function useCandidates(cycle: Cycle, ids: ElectionIds | undefined, office
 export function statusTone(status?: string): 'ok' | 'warn' | 'off' | 'none' {
   if (!status) return 'none'
   const s = status.toLowerCase()
-  if (/ren[uú]ncia|cancelad|falecid|cassad|n[aã]o conhecimento/.test(s)) return 'off'
+  if (/ren[uú]ncia|cancelad|falecid|cassad|n[aã]o conhecid|^indeferido$/.test(s)) return 'off'
   if (/indeferid|aguardando|pendente|sub judice|recurso/.test(s)) return 'warn'
   if (/deferid|apto/.test(s)) return 'ok'
   return 'none'

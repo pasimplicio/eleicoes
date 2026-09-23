@@ -35,6 +35,8 @@ const PARTY_COLORS: Record<string, string> = {
   PSC: '#00897b',
   PMN: '#795548',
   PATRIOTA: '#2e7d32',
+  'MISSÃO': '#8338ec',
+  DEMOCRATA: '#264653',
 }
 
 const FALLBACK = ['#64748b', '#8b5cf6', '#0ea5e9', '#14b8a6', '#a3a3a3', '#f43f5e']

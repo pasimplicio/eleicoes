@@ -191,7 +191,9 @@ function CandidateCard({ c, office }: { c: Candidate; office: Office }) {
             {c.vice}
           </p>
         )}
-        {c.coalition && <p className="line-clamp-2 text-xs leading-relaxed text-muted">{c.coalition}</p>}
+        {c.coalition && c.coalition !== c.party && (
+          <p className="line-clamp-2 text-xs leading-relaxed text-muted">Coligação {c.coalition}</p>
+        )}
       </div>
 
       {c.status && (
