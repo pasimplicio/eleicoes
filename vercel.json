@@ -7,7 +7,11 @@
       "destination": "/api/tse?p=:path*"
     },
     {
-      "source": "/((?!api/|tse/|geo/|assets/).*)",
+      "source": "/cand/:path*",
+      "destination": "/api/divulgacand?p=:path*"
+    },
+    {
+      "source": "/((?!api/|tse/|cand/|geo/|assets/).*)",
       "destination": "/index.html"
     }
   ],
@@ -36,6 +40,9 @@
       "maxDuration": 60
     },
     "api/tse.ts": {
+      "maxDuration": 15
+    },
+    "api/divulgacand.ts": {
       "maxDuration": 15
     }
   }
