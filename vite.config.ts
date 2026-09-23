@@ -30,7 +30,7 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg'],
+      includeAssets: ['favicon.svg', 'icons/apple-touch-icon.png'],
       manifest: {
         name: 'Apuração Brasil | Eleições',
         short_name: 'Apuração',
@@ -39,9 +39,20 @@ export default defineConfig({
         theme_color: '#111418',
         background_color: '#f3f4f6',
         display: 'standalone',
+        id: '/',
         start_url: '/',
+        scope: '/',
+        orientation: 'any',
+        categories: ['news', 'politics'],
         icons: [
+          { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+          { src: '/icons/maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
           { src: '/favicon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
+        ],
+        shortcuts: [
+          { name: 'Pesquisas', url: '/pesquisas', icons: [{ src: '/icons/icon-192.png', sizes: '192x192' }] },
+          { name: 'Telão', url: '/telao', icons: [{ src: '/icons/icon-192.png', sizes: '192x192' }] },
         ],
       },
       workbox: {

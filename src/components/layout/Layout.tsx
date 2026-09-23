@@ -4,6 +4,7 @@ import { Link, NavLink, Outlet, ScrollRestoration } from 'react-router-dom'
 import { cn, fmtDateLong } from '../../lib/format'
 import { resultsStart, useFeaturedCycle } from '../../lib/phase'
 import { CountdownInline } from '../Countdown'
+import { InstallApp } from '../InstallApp'
 import { Container, LiveBadge } from '../ui'
 
 function useTheme() {
@@ -104,14 +105,17 @@ export function Layout() {
               </NavLink>
             ))}
           </nav>
+          <div className="ml-auto flex items-center gap-1 lg:ml-0">
+          <InstallApp />
           <button
             type="button"
             onClick={toggle}
-            className="ml-auto flex h-11 w-11 cursor-pointer items-center justify-center rounded-md text-ink-2 transition hover:bg-surface-2 hover:text-ink lg:ml-0"
+            className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-md text-ink-2 transition hover:bg-surface-2 hover:text-ink"
             aria-label={dark ? 'Usar tema claro' : 'Usar tema escuro'}
           >
             {dark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
           </button>
+          </div>
         </Container>
         <nav
           className="flex gap-1 overflow-x-auto border-t border-line px-3 [scrollbar-width:none] lg:hidden"
