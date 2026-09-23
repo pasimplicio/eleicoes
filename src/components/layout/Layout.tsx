@@ -179,6 +179,14 @@ export function Layout() {
             </p>
           </div>
         </Container>
+        <div className="border-t border-line">
+          <Container className="flex flex-wrap items-center justify-between gap-x-6 gap-y-1 py-4 text-xs text-muted">
+            <span>© {new Date().getFullYear()} Apuração Brasil</span>
+            <span>
+              Desenvolvido por <strong className="font-semibold text-ink-2">Paulo Simplicio</strong>
+            </span>
+          </Container>
+        </div>
       </footer>
       <ScrollRestoration />
     </div>
