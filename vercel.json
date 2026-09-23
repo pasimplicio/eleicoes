@@ -45,5 +45,8 @@
     "api/divulgacand.ts": {
       "maxDuration": 15
     }
-  }
+  },
+  "regions": [
+    "gru1"
+  ]
 }
