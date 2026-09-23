@@ -57,6 +57,21 @@ export function TelaoConfig() {
             </select>
           </div>
           <div>
+            <label htmlFor={`${id}-turno`} className="mb-1.5 block text-[14px] font-bold text-[#333]">
+              Turno
+            </label>
+            <select
+              id={`${id}-turno`}
+              className={field}
+              value={String(c.turno)}
+              onChange={(e) => set({ turno: e.target.value === 'auto' ? 'auto' : (Number(e.target.value) as 1 | 2) })}
+            >
+              <option value="auto">Automático (pelo calendário)</option>
+              <option value="1">1º turno</option>
+              <option value="2">2º turno</option>
+            </select>
+          </div>
+          <div>
             <label htmlFor={`${id}-seg`} className="mb-1.5 block text-[14px] font-bold text-[#333]">
               Segundos em cada tela
             </label>

@@ -11,6 +11,8 @@ export interface TelaoAbrangencia {
 
 export interface TelaoConfig {
   ano: number
+  /** 'auto' segue o calendário (2º turno a partir da data dele); 1 ou 2 fixa o turno. */
+  turno: 'auto' | 1 | 2
   segundos: number
   mostrarAcompanhamentoGeral: boolean
   abrangencias: TelaoAbrangencia[]
@@ -22,6 +24,7 @@ const KEY = 'telao.config'
 
 export const defaultTelaoConfig = (): TelaoConfig => ({
   ano: currentYear(),
+  turno: 'auto',
   segundos: 15,
   mostrarAcompanhamentoGeral: true,
   abrangencias: [{ cargo: 'presidente', uf: 'BR' }],
@@ -32,7 +35,7 @@ export function loadTelaoConfig(): TelaoConfig {
     const raw = localStorage.getItem(KEY)
     if (raw) {
       const c = JSON.parse(raw) as TelaoConfig
-      if (Array.isArray(c.abrangencias) && c.abrangencias.length) return c
+      if (Array.isArray(c.abrangencias) && c.abrangencias.length) return { ...defaultTelaoConfig(), ...c }
     }
   } catch {
     /* armazenamento indisponível ou configuração inválida */

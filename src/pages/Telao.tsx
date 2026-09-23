@@ -43,14 +43,27 @@ function useFullscreen() {
 export function Telao() {
   const [search] = useSearchParams()
   const anoParam = Number(search.get('ano'))
+  const turnoParam = Number(search.get('turno'))
+  const telasParam = search.get('telas')
+  const geralParam = search.get('geral')
   const config = useMemo(() => {
     const c = loadTelaoConfig()
-    return getCycle(anoParam)?.kind === 'geral' ? { ...c, ano: anoParam } : c
-  }, [anoParam])
+    if (getCycle(anoParam)?.kind === 'geral') c.ano = anoParam
+    if (turnoParam === 1 || turnoParam === 2) c.turno = turnoParam
+    // ?telas=presidente-br,governador-sp  |  ?geral=0 desliga o acompanhamento geral
+    const telas = (telasParam ?? '')
+      .split(',')
+      .map((t) => t.trim().toLowerCase().match(/^(presidente|governador|senador)-([a-z]{2})$/))
+      .filter((m): m is RegExpMatchArray => Boolean(m) && (m![2] === 'br' ? m![1] === 'presidente' : Boolean(findUf(m![2]))))
+      .map((m) => ({ cargo: m[1], uf: m[2].toUpperCase() }))
+    if (telas.length) c.abrangencias = telas
+    if (geralParam === '0') c.mostrarAcompanhamentoGeral = false
+    return c
+  }, [anoParam, turnoParam, telasParam, geralParam])
   const modulos = useMemo(() => roteiro(config), [config])
   const cycle = getCycle(config.ano) ?? getCycle(2022)!
   const { ids } = useElectionIds(cycle.year)
-  const turn = defaultTurn(cycle, Boolean(ids?.[2]))
+  const turn: Turn = config.turno === 'auto' ? defaultTurn(cycle, Boolean(ids?.[2])) : config.turno
   const scale = useStageScale()
   const [fullscreen, toggleFullscreen] = useFullscreen()
   const [i, setI] = useState(0)
@@ -97,7 +110,7 @@ export function Telao() {
 
 function Cabecalho({ local, cargo, turno, cycle }: { local: string; cargo: string; turno?: Turn; cycle: Cycle }) {
   return (
-    <header className="relative flex h-[104px] shrink-0 items-center overflow-hidden bg-[var(--tse-secundary)] px-10">
+    <header className="relative flex h-[88px] shrink-0 items-center overflow-hidden bg-[var(--tse-secundary)] px-10">
       <span className="flex items-center gap-2 text-[28px] font-bold text-[var(--tse-primary)]">
         <MapPin weight="fill" className="h-7 w-7" />
         {local}
@@ -146,7 +159,7 @@ function CartaoTotalizacao({
 }) {
   const pct = result?.sectionsPct ?? 0
   return (
-    <section className="rounded-2xl bg-white px-5 pt-4 pb-3 shadow-[0_1px_3px_rgb(0_0_0/0.06)]">
+    <section className="rounded-2xl bg-white px-5 pt-3 pb-2.5 shadow-[0_1px_3px_rgb(0_0_0/0.06)]">
       <div className="flex items-start justify-between">
         <div>
           <p className="text-[20px] font-bold text-[#222]">{fmtPct(pct)} das seções totalizadas</p>
@@ -215,7 +228,7 @@ function Abrangencia({
         cargo={office.name}
         turno={office.hasRunoff ? (result.data?.turn as Turn | undefined) ?? effectiveTurn : undefined}
       />
-      <div className="flex flex-1 flex-col gap-4 px-10 pt-5 pb-6">
+      <div className="flex min-h-0 flex-1 flex-col gap-3 px-10 pt-4 pb-4">
         <CartaoTotalizacao
           result={result.data}
           aguardando={aguardando}
@@ -223,7 +236,7 @@ function Abrangencia({
           onAtualizar={() => result.refetch()}
           inicio={cycle.dates[effectiveTurn].split('-').reverse().join('/')}
         />
-        <h2 className="text-[24px] font-extrabold text-[#111]">{office.name}</h2>
+        <h2 className="text-[22px] leading-none font-extrabold text-[#111]">{office.name}</h2>
         <GradeCandidatos cards={cards} />
       </div>
     </div>
@@ -350,12 +363,12 @@ function Cartao({ c, destaque, compacto }: { c: CandidateCard; destaque?: boolea
   return (
     <article
       className={cn(
-        'flex min-w-0 flex-col rounded-2xl bg-white p-4 shadow-[0_1px_3px_rgb(0_0_0/0.06)]',
+        'flex min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl bg-white px-4 py-3 shadow-[0_1px_3px_rgb(0_0_0/0.06)]',
         destaque && 'col-span-2',
       )}
     >
       <div className="flex items-start justify-between gap-2">
-        <FotoAnel src={c.photo} name={c.name} pct={c.pct} size={destaque ? 80 : 68} />
+        <FotoAnel src={c.photo} name={c.name} pct={c.pct} size={destaque ? 76 : 56} />
         <div className="text-right">
           <p className={cn('leading-none font-bold text-[var(--tse-tertiary)] tabular', destaque ? 'text-[36px]' : 'text-[24px]')}>
             {fmtPct(c.pct)}
@@ -370,12 +383,12 @@ function Cartao({ c, destaque, compacto }: { c: CandidateCard; destaque?: boolea
         <p
           className={cn(
             'line-clamp-2 leading-tight font-extrabold text-[#111] uppercase',
-            destaque ? 'mt-1 text-[32px]' : 'mt-0.5 text-[19px]',
+            destaque ? 'mt-1 text-[32px]' : 'mt-0.5 text-[17px]',
           )}
         >
           {c.name}
         </p>
-        <div className={cn('mt-2', destaque ? 'text-[16px]' : 'text-[12px]')}>
+        <div className={cn('mt-1.5', destaque ? 'text-[16px]' : 'text-[12px]')}>
           <Pilula status={c.status} />
         </div>
       </div>
