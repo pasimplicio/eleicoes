@@ -9,6 +9,7 @@
 import { useQuery } from '@tanstack/react-query'
 import type { Cycle, ElectionIds, Office } from '../../config/elections'
 import { partyColor } from '../../config/parties'
+import { byStatusThenName } from '../candidates'
 import { decodeEntities, titleCase } from '../format'
 import { allocate, thirdPhaseRule, type CandidateOutcome, type ThirdPhaseRule } from '../proportional'
 import { photoPath, simplifiedPath, BASE } from './paths'
@@ -314,7 +315,7 @@ export function useProportionalCandidates(year: number, office: Office, uf: stri
             status: c.situacao,
             photo: c.foto,
           }))
-          .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')),
+          .sort(byStatusThenName),
       }
     },
   })

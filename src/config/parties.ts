@@ -13,6 +13,7 @@ const PARTY_COLORS: Record<string, string> = {
   PDT: '#e05a2b',
   PSOL: '#7b2d8e',
   'PC do B': '#8b0000',
+  PCDOB: '#8b0000',
   PV: '#3fa34d',
   REDE: '#00a19a',
   NOVO: '#ff6a13',

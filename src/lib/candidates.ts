@@ -50,6 +50,9 @@ export interface Snapshot {
 const TONE_ORDER = { ok: 0, none: 0, warn: 1, off: 2 } as const
 
 /** Aptos primeiro, contestados depois, fora da disputa por último; em cada grupo, por nome. */
+export const byStatusThenName = (a: { name: string; status?: string }, b: { name: string; status?: string }) =>
+  TONE_ORDER[statusTone(a.status)] - TONE_ORDER[statusTone(b.status)] || a.name.localeCompare(b.name, 'pt-BR')
+
 const byName = (a: Candidate, b: Candidate) =>
   TONE_ORDER[statusTone(a.status)] - TONE_ORDER[statusTone(b.status)] || a.name.localeCompare(b.name, 'pt-BR')
 
