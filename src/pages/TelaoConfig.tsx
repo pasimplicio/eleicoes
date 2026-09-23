@@ -160,7 +160,14 @@ export function TelaoConfig() {
           </button>
         </section>
 
-        <div className="flex justify-end">
+        <div className="flex items-center justify-between gap-4">
+          <button
+            type="button"
+            onClick={() => navigate('/')}
+            className="min-h-12 rounded-lg px-4 text-[15px] font-bold text-[var(--tse-primary)] hover:underline"
+          >
+            Voltar ao site
+          </button>
           <button
             type="button"
             onClick={iniciar}

@@ -1,9 +1,9 @@
 // Modo telão (TV), no padrão visual do app Resultados do TSE: palco de 1280x720 que
 // escala para a tela, telas em rodízio (acompanhamento geral e resultado por cargo e
 // localidade), barra de totalização amarelo-azul e cartões com anel de votos.
-import { ArrowsClockwise, ArrowsIn, ArrowsOut, GearSix, MapPin } from '@phosphor-icons/react'
+import { ArrowsClockwise, ArrowsIn, ArrowsOut, GearSix, MapPin, SignOut } from '@phosphor-icons/react'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { ChoroplethMap } from '../components/map/ChoroplethMap'
 import { findOffice, getCycle, todayBrasilia, type Cycle, type ElectionIds, type Office, type Turn } from '../config/elections'
 import { UF_BY_IBGE, UFS, findUf } from '../config/ufs'
@@ -66,7 +66,13 @@ export function Telao() {
   const turn: Turn = config.turno === 'auto' ? defaultTurn(cycle, Boolean(ids?.[2])) : config.turno
   const scale = useStageScale()
   const [fullscreen, toggleFullscreen] = useFullscreen()
+  const navigate = useNavigate()
   const [i, setI] = useState(0)
+
+  const sair = async () => {
+    if (document.fullscreenElement) await document.exitFullscreen().catch(() => {})
+    navigate('/')
+  }
 
   useEffect(() => {
     if (modulos.length < 2) return
@@ -95,7 +101,10 @@ export function Telao() {
           fullscreen && 'opacity-0 hover:opacity-100 focus-within:opacity-100',
         )}
       >
-        <Link to="/telao/configurar" className="telao-fab" aria-label="Configurar telão">
+        <button type="button" onClick={sair} className="telao-fab" aria-label="Sair do modo telão" title="Sair do modo telão">
+          <SignOut weight="bold" className="h-6 w-6" />
+        </button>
+        <Link to="/telao/configurar" className="telao-fab" aria-label="Configurar telão" title="Configurar telão">
           <GearSix weight="fill" className="h-6 w-6" />
         </Link>
         <button type="button" onClick={toggleFullscreen} className="telao-fab" aria-label={fullscreen ? 'Sair da tela cheia' : 'Tela cheia'}>
