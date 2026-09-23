@@ -176,6 +176,16 @@
   cursor: pointer;
 }
 
+@keyframes sheet-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+}
+.install-sheet {
+  animation: sheet-up 380ms var(--ease-out-expo) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

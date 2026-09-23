@@ -1,115 +1,95 @@
-// Botão "Instalar app": usa o convite nativo do navegador (Chrome, Edge, Android) e, no
-// iPhone/iPad, onde não existe convite, explica o caminho pelo menu Compartilhar.
-// Some quando o portal já está aberto como aplicativo instalado.
-import { DeviceMobile, Export, PlusSquare, X } from '@phosphor-icons/react'
-import { useEffect, useRef, useState } from 'react'
-import { cn } from '../lib/format'
+// Instalação do aplicativo (PWA).
+//  - Chrome, Edge e Android oferecem a instalação sozinhos (botão "Instalar" na barra de
+//    endereço, aviso "Adicionar à tela inicial"). O portal não intercepta esse convite.
+//  - iPhone/iPad (Safari) não têm oferta nativa: este aviso aparece ao acessar e mostra o
+//    caminho pelo Compartilhar. Não reaparece por 7 dias depois de fechado.
+import { Export, PlusSquare, X } from '@phosphor-icons/react'
+import { useEffect, useState } from 'react'
 
-interface BeforeInstallPromptEvent extends Event {
-  prompt: () => Promise<void>
-  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
-}
+const KEY = 'instalar.dispensado'
+const INTERVALO = 7 * 24 * 60 * 60 * 1000
+const ATRASO_IOS = 2500
 
 const isStandalone = () =>
   window.matchMedia?.('(display-mode: standalone)').matches ||
   (navigator as Navigator & { standalone?: boolean }).standalone === true
 
-const isIos = () =>
-  /iphone|ipad|ipod/i.test(navigator.userAgent) ||
-  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+const isIosSafari = () => {
+  const ua = navigator.userAgent
+  const ios = /iphone|ipad|ipod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+  return ios && /safari/i.test(ua) && !/crios|fxios|edgios/i.test(ua)
+}
 
-export function InstallApp({ className }: { className?: string }) {
-  const [evento, setEvento] = useState<BeforeInstallPromptEvent | null>(null)
-  const [instalado, setInstalado] = useState(isStandalone)
-  const dialogRef = useRef<HTMLDialogElement>(null)
-  const ios = isIos()
+function dispensadoRecentemente() {
+  try {
+    return Date.now() - Number(localStorage.getItem(KEY) ?? 0) < INTERVALO
+  } catch {
+    return false
+  }
+}
+
+export function InstallApp() {
+  const [aberto, setAberto] = useState(false)
 
   useEffect(() => {
-    const onPrompt = (e: Event) => {
-      e.preventDefault()
-      setEvento(e as BeforeInstallPromptEvent)
-    }
-    const onInstalled = () => {
-      setInstalado(true)
-      setEvento(null)
-    }
-    window.addEventListener('beforeinstallprompt', onPrompt)
-    window.addEventListener('appinstalled', onInstalled)
-    return () => {
-      window.removeEventListener('beforeinstallprompt', onPrompt)
-      window.removeEventListener('appinstalled', onInstalled)
-    }
+    if (isStandalone() || dispensadoRecentemente() || !isIosSafari()) return
+    const t = window.setTimeout(() => setAberto(true), ATRASO_IOS)
+    return () => window.clearTimeout(t)
   }, [])
 
-  if (instalado || (!evento && !ios)) return null
-
-  const instalar = async () => {
-    if (evento) {
-      await evento.prompt()
-      const { outcome } = await evento.userChoice
-      if (outcome === 'accepted') setInstalado(true)
-      setEvento(null)
-    } else {
-      dialogRef.current?.showModal()
+  const dispensar = () => {
+    try {
+      localStorage.setItem(KEY, String(Date.now()))
+    } catch {
+      /* armazenamento indisponível */
     }
+    setAberto(false)
   }
 
-  return (
-    <>
-      <button
-        type="button"
-        onClick={instalar}
-        aria-label="Instalar o aplicativo"
-        className={cn(
-          'inline-flex h-10 cursor-pointer items-center gap-2 rounded-md bg-ink px-3 text-sm font-semibold text-page transition hover:bg-ink-2 active:translate-y-px',
-          className,
-        )}
-      >
-        <DeviceMobile className="h-4 w-4" aria-hidden />
-        <span className="lg:hidden xl:inline">Instalar app</span>
-      </button>
+  if (!aberto) return null
 
-      {ios && (
-        <dialog
-          ref={dialogRef}
-          aria-labelledby="instalar-titulo"
-          className="m-auto w-[min(92vw,26rem)] rounded-lg border border-line bg-surface p-6 text-ink backdrop:bg-black/50"
-          onClick={(e) => e.target === dialogRef.current && dialogRef.current?.close()}
+  return (
+    <div
+      role="dialog"
+      aria-labelledby="instalar-titulo"
+      aria-describedby="instalar-texto"
+      className="install-sheet fixed inset-x-3 bottom-3 z-50 mx-auto max-w-md rounded-lg border border-line bg-surface p-4 shadow-[0_18px_48px_rgb(17_20_24/0.24)] sm:inset-x-auto sm:right-5 sm:bottom-5"
+      style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+    >
+      <div className="flex items-start gap-3">
+        <img src="/icons/icon-192.png" alt="" width={48} height={48} className="h-12 w-12 shrink-0 rounded-xl" />
+        <div className="min-w-0 flex-1">
+          <p id="instalar-titulo" className="font-semibold">
+            Instale o Apuração Brasil
+          </p>
+          <p id="instalar-texto" className="mt-0.5 text-sm leading-snug text-muted">
+            Acesso direto da tela inicial e resultados em tela cheia no dia da eleição.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={dispensar}
+          className="-mt-1 -mr-1 flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted hover:bg-surface-2 hover:text-ink"
+          aria-label="Fechar"
         >
-          <div className="flex items-start justify-between gap-4">
-            <h2 id="instalar-titulo" className="font-serif text-2xl font-semibold tracking-tight">
-              Instalar no iPhone
-            </h2>
-            <button
-              type="button"
-              onClick={() => dialogRef.current?.close()}
-              className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-md hover:bg-surface-2"
-              aria-label="Fechar"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-          <ol className="mt-5 space-y-4 text-[15px]">
-            <li className="flex items-center gap-3">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-surface-2">
-                <Export className="h-5 w-5" aria-hidden />
-              </span>
-              <span>
-                No Safari, toque em <strong>Compartilhar</strong>.
-              </span>
-            </li>
-            <li className="flex items-center gap-3">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-surface-2">
-                <PlusSquare className="h-5 w-5" aria-hidden />
-              </span>
-              <span>
-                Escolha <strong>Adicionar à Tela de Início</strong> e confirme.
-              </span>
-            </li>
-          </ol>
-          <p className="mt-5 text-sm text-muted">O Apuração Brasil abre em tela cheia, como um aplicativo.</p>
-        </dialog>
-      )}
-    </>
+          <X className="h-5 w-5" />
+        </button>
+      </div>
+
+        <ol className="mt-3 space-y-2 rounded-md bg-surface-2 p-3 text-sm">
+          <li className="flex items-center gap-2.5">
+            <Export className="h-5 w-5 shrink-0" aria-hidden />
+            <span>
+              Toque em <strong>Compartilhar</strong> na barra do Safari.
+            </span>
+          </li>
+          <li className="flex items-center gap-2.5">
+            <PlusSquare className="h-5 w-5 shrink-0" aria-hidden />
+            <span>
+              Escolha <strong>Adicionar à Tela de Início</strong>.
+            </span>
+          </li>
+        </ol>
+    </div>
   )
 }
