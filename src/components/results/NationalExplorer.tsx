@@ -50,7 +50,7 @@ export function NationalExplorer({ cycle, ids, office, turn, header }: Props) {
 
   return (
     <div className="space-y-14">
-      <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-12">
+      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-10 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-12">
         <div className="fade-up space-y-7">
           {header}
           {noData ? (

@@ -6,7 +6,7 @@ import { HeadToHead, Scoreboard, SectionsProgress, TotalsStrip } from '../compon
 import { Container, EmptyState, Segmented, Skeleton } from '../components/ui'
 import { findOffice, getCycle, type Turn } from '../config/elections'
 import { partyColor } from '../config/parties'
-import { findUf, type Uf } from '../config/ufs'
+import { findUf, inUf, ofUf, type Uf } from '../config/ufs'
 import { shade } from '../lib/colors'
 import { cn, fmtPct } from '../lib/format'
 import { defaultTurn } from '../lib/phase'
@@ -135,11 +135,11 @@ function StateView({
       </div>
       {decidedInFirst && (
         <p className="mt-4 max-w-2xl rounded-md border border-line bg-surface-2 px-4 py-2.5 text-sm text-ink-2">
-          Em {uf.nome}, a eleição para {office.name.toLowerCase()} foi decidida no 1º turno. Mostrando esse resultado.
+          {inUf(uf).replace(/^./, (c) => c.toUpperCase())}, a eleição para {office.name.toLowerCase()} foi decidida no 1º turno. Mostrando esse resultado.
         </p>
       )}
 
-      <div className="mt-8 grid items-start gap-10 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-12">
+      <div className="mt-8 grid grid-cols-[minmax(0,1fr)] items-start gap-10 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-12">
         <section aria-live="polite" className="fade-up lg:sticky lg:top-24">
           <div className="mb-5 flex items-start justify-between gap-3">
             <div>
@@ -190,7 +190,7 @@ function StateView({
           <div className="relative mt-4">
             <ChoroplethMap
               src={`/geo/uf/${ufl}.json`}
-              label={`Mapa de ${uf.nome} com o candidato à frente em cada município`}
+              label={`Mapa ${ofUf(uf)} com o candidato à frente em cada município`}
               selected={selected?.ibge}
               fill={(code) => {
                 const l = lead(code)?.top[0]

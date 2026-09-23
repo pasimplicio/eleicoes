@@ -40,6 +40,17 @@ export const UFS: Uf[] = [
 export const UF_BY_SIGLA = Object.fromEntries(UFS.map((u) => [u.sigla, u])) as Record<string, Uf>
 export const UF_BY_IBGE = Object.fromEntries(UFS.map((u) => [u.ibge, u])) as Record<string, Uf>
 
+// Artigo usado com o nome de cada UF ("no Rio de Janeiro", "na Bahia", "em São Paulo").
+const ARTICLE: Record<string, 'o' | 'a' | ''> = {
+  AC: 'o', AP: 'o', AM: 'o', CE: 'o', DF: 'o', ES: 'o', MA: 'o', MT: 'o', MS: 'o', PA: 'o', PR: 'o', PI: 'o',
+  RJ: 'o', RN: 'o', RS: 'o', BA: 'a', PB: 'a',
+}
+
+/** "no Distrito Federal", "na Bahia", "em São Paulo" */
+export const inUf = (uf: Uf) => ({ o: 'no', a: 'na', '': 'em' })[ARTICLE[uf.sigla] ?? ''] + ' ' + uf.nome
+/** "do Distrito Federal", "da Bahia", "de São Paulo" */
+export const ofUf = (uf: Uf) => ({ o: 'do', a: 'da', '': 'de' })[ARTICLE[uf.sigla] ?? ''] + ' ' + uf.nome
+
 export function findUf(sigla?: string): Uf | undefined {
   return sigla ? UF_BY_SIGLA[sigla.toUpperCase()] : undefined
 }

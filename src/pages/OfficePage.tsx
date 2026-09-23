@@ -1,8 +1,8 @@
-import { ListNumbers } from '@phosphor-icons/react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { CandidatesExplorer } from '../components/candidates/CandidatesExplorer'
+import { ProportionalExplorer } from '../components/proportional/ProportionalExplorer'
 import { NationalExplorer } from '../components/results/NationalExplorer'
-import { Container, EmptyState, Segmented } from '../components/ui'
+import { Container, Segmented } from '../components/ui'
 import { findOffice, getCycle, KNOWN_IDS, todayBrasilia, type Turn } from '../config/elections'
 import { defaultTurn } from '../lib/phase'
 import { useElectionIds } from '../lib/tse/queries'
@@ -30,7 +30,11 @@ export function OfficePage() {
         Eleições {cycle.kind === 'geral' ? 'gerais' : 'municipais'} de {cycle.year}
       </p>
       <h1 className="mt-2 font-serif text-[2.5rem] leading-[1.05] font-semibold tracking-tight sm:text-5xl">
-        {office.name}
+        {office.system === 'proporcional'
+          ? office.slug === 'deputado-federal'
+            ? 'Deputados federais'
+            : 'Deputados estaduais e distritais'
+          : office.name}
       </h1>
       <div className="mt-6 flex flex-wrap gap-2">
         {years.length > 1 && (
@@ -41,7 +45,7 @@ export function OfficePage() {
             options={years.map((y) => ({ value: String(y), label: String(y) }))}
           />
         )}
-        {office.hasRunoff && !(todayBrasilia() < cycle.dates[1]) && (
+        {office.hasRunoff && office.system === 'majoritario' && !(todayBrasilia() < cycle.dates[1]) && (
           <Segmented<Turn>
             label="Turno"
             value={turn}
@@ -61,13 +65,7 @@ export function OfficePage() {
   return (
     <Container className="pt-8 sm:pt-12">
       {office.system === 'proporcional' ? (
-        <div className="max-w-3xl space-y-8">
-          {header}
-          <EmptyState icon={<ListNumbers className="h-7 w-7" />} title="Resultados proporcionais em breve">
-            Bancadas, quociente eleitoral e lista de eleitos para {office.name.toLowerCase()} entram na próxima fase
-            do portal.
-          </EmptyState>
-        </div>
+        <ProportionalExplorer cycle={cycle} ids={ids} office={office} header={header} />
       ) : upcoming ? (
         <CandidatesExplorer cycle={cycle} ids={ids} office={office} header={header} />
       ) : (

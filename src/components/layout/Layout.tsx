@@ -67,6 +67,7 @@ export function Layout() {
     ...f.cycle.offices
       .filter((o) => o.system === 'majoritario')
       .map((o) => ({ to: `/${f.cycle.year}/${o.slug}`, label: o.name, end: false })),
+    ...(f.cycle.kind === 'geral' ? [{ to: `/${f.cycle.year}/deputado-federal`, label: 'Deputados', end: false }] : []),
     { to: '/pesquisas', label: 'Pesquisas', end: false },
     { to: '/sobre', label: 'Metodologia', end: false },
   ]

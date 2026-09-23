@@ -81,3 +81,19 @@ Por isso a coleta roda no navegador:
 1. Abra <https://divulgacandcontas.tse.jus.br/divulga/> no Chrome ou Edge.
 2. Pressione F12, abra a aba **Console**, cole o conteúdo de `scripts/coletar-candidatos.js` e tecle Enter.
 3. Salve o arquivo baixado em `public/data/` e faça o push.
+
+## Deputados (eleições proporcionais)
+
+A página de cada cargo (`/2022/deputado-federal?uf=sp`) mostra a bancada em hemiciclo, a distribuição por
+partido ou federação (quociente partidário, vagas por QP e por média), os eleitos e todos os candidatos.
+
+- **Resultado oficial:** quando o TSE declara os eleitos, o portal exibe exatamente as vagas e situações do TSE.
+- **Durante a apuração:** `src/lib/proportional.ts` projeta as vagas pelas regras do Código Eleitoral (arts.
+  106 a 112, Lei 14.211/2021, federações como um partido). A partir de 2024 a última fase das sobras segue a
+  decisão do STF (ADIs 7228, 7263 e 7325).
+- **Validação:** `node --experimental-strip-types scripts/validar-proporcionais.mjs` compara o cálculo com o
+  resultado oficial de 2022. Confere em 53 das 54 disputas; a exceção (deputado federal no TO) é um caso
+  histórico em que o arquivo do TSE não segue a mesma interpretação das demais UFs.
+- **Candidatos antes da eleição:** rode `scripts/coletar-proporcionais.js` no console do DivulgaCandContas e
+  depois `node scripts/dividir-proporcionais.mjs <arquivo baixado>`, que grava
+  `public/data/candidatos-<ano>/<cargo>/<uf>.json`.

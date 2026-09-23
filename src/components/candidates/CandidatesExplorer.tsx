@@ -3,7 +3,7 @@ import { useId, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import type { Cycle, ElectionIds, Office } from '../../config/elections'
 import { partyColor } from '../../config/parties'
-import { findUf, UF_BY_IBGE, UFS } from '../../config/ufs'
+import { findUf, inUf, UF_BY_IBGE, UFS } from '../../config/ufs'
 import { statusTone, useCandidates, type Candidate } from '../../lib/candidates'
 import { cn, fmtDateLong } from '../../lib/format'
 import { resultsStart } from '../../lib/phase'
@@ -19,11 +19,11 @@ interface Props {
   header?: ReactNode
 }
 
-const OFFICE_TITLE: Record<string, (uf?: string) => string> = {
+const OFFICE_TITLE: Record<string, (where?: string) => string> = {
   presidente: () => 'Candidatos a presidente',
-  governador: (uf) => `Candidatos a governador${uf ? ` em ${uf}` : ''}`,
-  senador: (uf) => `Candidatos ao Senado${uf ? ` em ${uf}` : ''}`,
-  prefeito: (uf) => `Candidatos a prefeito${uf ? ` em ${uf}` : ''}`,
+  governador: (where) => `Candidatos a governador${where ? ` ${where}` : ''}`,
+  senador: (where) => `Candidatos ao Senado${where ? ` ${where}` : ''}`,
+  prefeito: (where) => `Candidatos a prefeito${where ? ` ${where}` : ''}`,
 }
 
 export function CandidatesExplorer({ cycle, ids, office, header }: Props) {
@@ -39,12 +39,12 @@ export function CandidatesExplorer({ cycle, ids, office, header }: Props) {
     setSearch(next, { replace: true, preventScrollReset: true })
   }
 
-  const title = (OFFICE_TITLE[office.slug] ?? (() => `Candidatos a ${office.name.toLowerCase()}`))(uf?.nome)
+  const title = (OFFICE_TITLE[office.slug] ?? (() => `Candidatos a ${office.name.toLowerCase()}`))(uf ? inUf(uf) : undefined)
   const candidates = list.data?.candidates ?? []
 
   return (
     <div className="space-y-14">
-      <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-12">
+      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-10 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-12">
         <div className="fade-up space-y-7">
           {header}
           {needsUf && <UfSelect value={uf!.sigla} onChange={pickUf} />}
@@ -52,7 +52,7 @@ export function CandidatesExplorer({ cycle, ids, office, header }: Props) {
             <p className="text-ink-2">
               <span className="text-4xl font-semibold tracking-tight text-ink tabular">{candidates.length}</span>{' '}
               {candidates.length === 1 ? 'candidatura registrada' : 'candidaturas registradas'}
-              {uf ? ` em ${uf.nome}` : ' para presidente'}.
+              {uf ? ` ${inUf(uf)}` : ' para presidente'}.
             </p>
           )}
         </div>
