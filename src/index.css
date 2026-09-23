@@ -140,6 +140,9 @@
     opacity 150ms ease;
   outline: none;
 }
+.map-zoom {
+  transition: transform 650ms var(--ease-out-expo);
+}
 .map-shape:focus-visible {
   stroke: var(--color-ink);
   stroke-width: 2.5px;

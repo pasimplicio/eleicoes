@@ -18,12 +18,24 @@ export interface ChoroplethMapProps {
   tooltip?: (code: string) => ReactNode
   onSelect?: (code: string) => void
   selected?: string
+  /** Códigos em destaque: o mapa aproxima neles e esmaece o restante. */
+  focus?: string[]
   className?: string
 }
 
 const WIDTH = 800
 
-export function ChoroplethMap({ src, label, fill, name, tooltip, onSelect, selected, className }: ChoroplethMapProps) {
+export function ChoroplethMap({
+  src,
+  label,
+  fill,
+  name,
+  tooltip,
+  onSelect,
+  selected,
+  focus,
+  className,
+}: ChoroplethMapProps) {
   const { data: topo, isLoading } = useStatic<Topology>(src)
   const wrapRef = useRef<HTMLDivElement>(null)
   const [hover, setHover] = useState<{ code: string; x: number; y: number; w: number } | null>(null)
@@ -42,9 +54,30 @@ export function ChoroplethMap({ src, label, fill, name, tooltip, onSelect, selec
       shapes: fc.features.map((f: Feature<Geometry, Props>) => ({
         code: String(f.properties.codarea),
         d: path(f) ?? '',
+        bounds: path.bounds(f),
       })),
     }
   }, [topo])
+
+  // Zoom na região em foco via transform do grupo (animável e sem recalcular os caminhos).
+  const zoom = useMemo(() => {
+    if (!geo || !focus?.length) return 'translate(0px, 0px) scale(1)'
+    const set = new Set(focus)
+    let [x0, y0, x1, y1] = [Infinity, Infinity, -Infinity, -Infinity]
+    for (const sh of geo.shapes) {
+      if (!set.has(sh.code)) continue
+      x0 = Math.min(x0, sh.bounds[0][0])
+      y0 = Math.min(y0, sh.bounds[0][1])
+      x1 = Math.max(x1, sh.bounds[1][0])
+      y1 = Math.max(y1, sh.bounds[1][1])
+    }
+    if (!Number.isFinite(x0)) return 'translate(0px, 0px) scale(1)'
+    const k = Math.min(4, 0.9 * Math.min(WIDTH / (x1 - x0), geo.height / (y1 - y0)))
+    const tx = WIDTH / 2 - k * ((x0 + x1) / 2)
+    const ty = geo.height / 2 - k * ((y0 + y1) / 2)
+    return `translate(${tx}px, ${ty}px) scale(${k})`
+  }, [geo, focus])
+  const focusSet = focus?.length ? new Set(focus) : null
 
   if (isLoading || !geo) {
     return <div className={cn('skeleton aspect-[1/1] w-full rounded-lg', className)} aria-busy="true" />
@@ -67,32 +100,36 @@ export function ChoroplethMap({ src, label, fill, name, tooltip, onSelect, selec
         viewBox={`0 0 ${WIDTH} ${geo.height}`}
         role="group"
         aria-label={label}
-        className="h-auto w-full select-none"
+        className="h-auto w-full overflow-hidden select-none"
         onPointerLeave={() => setHover(null)}
       >
+        <g className="map-zoom" style={{ transform: zoom }}>
         {ordered.map((s) => {
           const isSel = s.code === selected
+          const muted = focusSet !== null && !focusSet.has(s.code)
+          const interactive = Boolean(onSelect) && !muted
           return (
             <path
               key={s.code}
               d={s.d}
-              role={onSelect ? 'button' : 'img'}
-              tabIndex={onSelect ? 0 : undefined}
+              role={interactive ? 'button' : 'img'}
+              tabIndex={interactive ? 0 : undefined}
+              aria-hidden={muted || undefined}
               aria-label={name(s.code)}
-              aria-pressed={onSelect ? isSel : undefined}
-              fill={fill(s.code) ?? 'var(--color-map-empty)'}
+              aria-pressed={interactive ? isSel : undefined}
+              fill={muted ? 'var(--color-map-empty)' : (fill(s.code) ?? 'var(--color-map-empty)')}
               stroke={isSel ? 'var(--color-ink)' : 'var(--color-map-stroke)'}
               strokeWidth={isSel ? 2.5 : 0.75}
               vectorEffect="non-scaling-stroke"
               className={cn(
                 'map-shape',
-                onSelect && 'cursor-pointer',
-                hover && hover.code !== s.code && 'opacity-70',
+                interactive && 'cursor-pointer',
+                muted ? 'pointer-events-none opacity-30' : hover && hover.code !== s.code && 'opacity-70',
               )}
               onPointerMove={(e) => move(s.code, e)}
-              onClick={() => onSelect?.(s.code)}
+              onClick={() => interactive && onSelect?.(s.code)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
+                if (interactive && (e.key === 'Enter' || e.key === ' ')) {
                   e.preventDefault()
                   onSelect?.(s.code)
                 }
@@ -102,6 +139,7 @@ export function ChoroplethMap({ src, label, fill, name, tooltip, onSelect, selec
             </path>
           )
         })}
+        </g>
       </svg>
 
       {hover && tooltip && (

@@ -1,0 +1,1 @@
+eleicoes.sistemaspsdev.com.br.	1	IN	CNAME	cname.vercel-dns.com. ; cf_tags=cf-proxied:false

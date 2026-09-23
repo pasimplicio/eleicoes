@@ -1,16 +1,16 @@
 import { ArrowRight, Clock } from '@phosphor-icons/react'
-import type { ReactNode } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useMemo, type ReactNode } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import type { Cycle, ElectionIds, Office, Turn } from '../../config/elections'
 import { partyColor } from '../../config/parties'
 import { UF_BY_IBGE, UFS, type Region } from '../../config/ufs'
 import { leaderColor } from '../../lib/colors'
-import { cn, fmtPct } from '../../lib/format'
+import { cn, fmtPct, slugify } from '../../lib/format'
 import type { ResultSummary } from '../../lib/tse/model'
 import { useResult, useUfResults } from '../../lib/tse/queries'
 import { ChoroplethMap } from '../map/ChoroplethMap'
-import { EmptyState, SectionHeading, Skeleton } from '../ui'
-import { PartyChip } from './Candidate'
+import { EmptyState, Segmented, SectionHeading, Skeleton } from '../ui'
+import { CandidatePhoto, PartyChip } from './Candidate'
 import { HeadToHead, Scoreboard, SectionsProgress, TotalsStrip } from './Scoreboard'
 
 interface Props {
@@ -23,6 +23,7 @@ interface Props {
 }
 
 type ByUf = Record<string, ResultSummary | undefined>
+type RegionFilter = Region | 'Brasil'
 
 export function NationalExplorer({ cycle, ids, office, turn, header }: Props) {
   const navigate = useNavigate()
@@ -31,6 +32,18 @@ export function NationalExplorer({ cycle, ids, office, turn, header }: Props) {
   const { byUf, loaded } = useUfResults(target)
   const isNational = office.scope === 'br'
   const stateHref = (sigla: string) => `/${cycle.year}/${office.slug}/${sigla.toLowerCase()}?turno=${turn}`
+
+  const [search, setSearch] = useSearchParams()
+  const region: RegionFilter = REGIONS.find((r) => slugify(r) === search.get('regiao')) ?? 'Brasil'
+  const setRegion = (r: RegionFilter) => {
+    const next = new URLSearchParams(search)
+    if (r === 'Brasil') next.delete('regiao')
+    else next.set('regiao', slugify(r))
+    setSearch(next, { replace: true, preventScrollReset: true })
+  }
+  const ufsInView = region === 'Brasil' ? UFS : UFS.filter((u) => u.regiao === region)
+  const focus = region === 'Brasil' ? undefined : ufsInView.map((u) => u.ibge)
+  const inView = Object.fromEntries(ufsInView.map((u) => [u.sigla, byUf[u.sigla]])) as ByUf
 
   const noData = !national.isLoading && loaded === 0 && (national.data === null || !isNational)
   const headline = isNational ? national.data : undefined
@@ -64,7 +77,17 @@ export function NationalExplorer({ cycle, ids, office, turn, header }: Props) {
         </div>
 
         <figure className="lg:sticky lg:top-24">
+          <div className="mb-4">
+            <Segmented<RegionFilter>
+              label="Filtrar o mapa por região"
+              value={region}
+              onChange={setRegion}
+              options={(['Brasil', ...REGIONS] as RegionFilter[]).map((r) => ({ value: r, label: r }))}
+            />
+          </div>
+          {isNational && region !== 'Brasil' && <RegionSummary region={region} inView={inView} />}
           <ChoroplethMap
+            focus={focus}
             src="/geo/br-uf.json"
             label={`Mapa do Brasil com o candidato à frente em cada estado: ${office.name}, ${turn}º turno`}
             fill={(code) => leaderColor(byUf[UF_BY_IBGE[code]?.sigla])}
@@ -77,14 +100,28 @@ export function NationalExplorer({ cycle, ids, office, turn, header }: Props) {
             onSelect={(code) => navigate(stateHref(UF_BY_IBGE[code].sigla))}
           />
           <figcaption>
-            <PartyLegend byUf={byUf} />
+            <PartyLegend byUf={inView} />
           </figcaption>
         </figure>
       </div>
 
       <section aria-labelledby="por-estado">
-        <SectionHeading id="por-estado" title="Resultado por estado" />
-        <RegionGroups byUf={byUf} href={stateHref} showStatus={office.scope === 'uf'} />
+        <SectionHeading
+          id="por-estado"
+          title={region === 'Brasil' ? 'Resultado por estado' : `Resultado por estado: ${region}`}
+          action={
+            region !== 'Brasil' && (
+              <button
+                type="button"
+                onClick={() => setRegion('Brasil')}
+                className="min-h-11 cursor-pointer text-sm font-semibold text-ink hover:underline"
+              >
+                Ver todos os estados
+              </button>
+            )
+          }
+        />
+        <StateCards ufs={ufsInView} byUf={byUf} href={stateHref} showStatus={office.scope === 'uf'} turn={turn} />
       </section>
     </div>
   )
@@ -195,49 +232,134 @@ function PartyTally({ byUf, office }: { byUf: ByUf; office: Office }) {
 
 const REGIONS: Region[] = ['Norte', 'Nordeste', 'Centro-Oeste', 'Sudeste', 'Sul']
 
-function RegionGroups({ byUf, href, showStatus }: { byUf: ByUf; href: (uf: string) => string; showStatus: boolean }) {
+/** Soma dos votos dos estados filtrados (cargo nacional): o placar da região. */
+function RegionSummary({ region, inView }: { region: Region; inView: ByUf }) {
+  const rows = useMemo(() => {
+    const acc = new Map<string, { name: string; party: string; votes: number }>()
+    let total = 0
+    for (const r of Object.values(inView)) {
+      for (const c of r?.candidates ?? []) {
+        const cur = acc.get(c.id) ?? { name: c.name, party: c.party, votes: 0 }
+        cur.votes += c.votes
+        total += c.votes
+        acc.set(c.id, cur)
+      }
+    }
+    return [...acc.values()]
+      .sort((a, b) => b.votes - a.votes)
+      .slice(0, 2)
+      .map((c) => ({ ...c, pct: total ? (c.votes / total) * 100 : 0 }))
+  }, [inView])
+  if (!rows.length) return null
+
   return (
-    <div className="grid gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-      {REGIONS.map((region) => (
-        <div key={region}>
-          <h3 className="mb-2 text-sm font-semibold text-muted">{region}</h3>
-          <ul>
-            {UFS.filter((u) => u.regiao === region).map((uf) => {
-              const r = byUf[uf.sigla]
-              const lead = r?.candidates[0]
-              const status = showStatus && lead ? (lead.elected ? 'eleito' : lead.runoff && r?.final ? '2º turno' : '') : ''
-              return (
-                <li key={uf.sigla}>
-                  <Link
-                    to={href(uf.sigla)}
-                    className="group -mx-2 grid min-h-11 grid-cols-[3px_2rem_1fr_auto] items-center gap-x-2.5 rounded-md px-2 py-1.5 hover:bg-surface-2"
-                  >
-                    <span
-                      className="h-7 rounded-full"
-                      style={{ background: lead ? partyColor(lead.party) : 'var(--color-line)' }}
-                      aria-hidden
-                    />
-                    <span className="text-sm font-semibold tabular">{uf.sigla}</span>
-                    <span className="min-w-0">
-                      <span className="block truncate text-sm">{lead ? lead.name : uf.nome}</span>
-                      {lead && (
-                        <span className="block truncate text-xs text-muted">
-                          {lead.party}
-                          {status && `, ${status}`}
-                        </span>
-                      )}
-                    </span>
-                    <span className={cn('text-sm font-semibold tabular', !lead && 'text-muted')}>
-                      {lead ? fmtPct(lead.pct) : '...'}
-                    </span>
-                  </Link>
-                </li>
-              )
-            })}
-          </ul>
-        </div>
-      ))}
+    <div className="mb-4 rounded-md border border-line bg-surface px-4 py-3">
+      <p className="text-xs text-muted">Soma dos votos válidos na região {region}</p>
+      <div className="mt-1.5 flex flex-wrap items-baseline gap-x-6 gap-y-1">
+        {rows.map((c, i) => (
+          <span key={c.name} className="inline-flex items-baseline gap-2">
+            <span
+              className="h-2.5 w-2.5 self-center rounded-sm"
+              style={{ background: partyColor(c.party, i) }}
+              aria-hidden
+            />
+            <span className="text-sm">{c.name}</span>
+            <strong className="text-lg font-semibold tabular">{fmtPct(c.pct)}</strong>
+          </span>
+        ))}
+      </div>
     </div>
+  )
+}
+
+function StateCards({
+  ufs,
+  byUf,
+  href,
+  showStatus,
+  turn,
+}: {
+  ufs: typeof UFS
+  byUf: ByUf
+  href: (uf: string) => string
+  showStatus: boolean
+  turn: Turn
+}) {
+  return (
+    <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      {ufs.map((uf, i) => {
+        const r = byUf[uf.sigla]
+        const top = r?.candidates.slice(0, 2) ?? []
+        const lead = top[0]
+        const note =
+          r && r.turn === 1 && turn === 2
+            ? 'Decidido no 1º turno'
+            : showStatus && lead
+              ? lead.elected
+                ? 'Eleito'
+                : lead.runoff && r?.final
+                  ? 'Vai ao 2º turno'
+                  : ''
+              : ''
+        const margin = lead && top[1] ? lead.pct - top[1].pct : undefined
+        return (
+          <li key={uf.sigla} className="fade-up" style={{ animationDelay: `${Math.min(i, 12) * 35}ms` }}>
+            <Link
+              to={href(uf.sigla)}
+              aria-label={`${uf.nome}: ver resultado por município`}
+              className="group flex h-full flex-col rounded-lg border border-line bg-surface p-4 transition hover:border-ink/30 hover:shadow-[0_6px_20px_rgb(17_20_24/0.08)] active:translate-y-px"
+              style={{ borderTop: `3px solid ${lead ? partyColor(lead.party) : 'var(--color-line)'}` }}
+            >
+              <div className="flex items-baseline justify-between gap-2">
+                <h3 className="font-semibold">{uf.nome}</h3>
+                {note && <span className="shrink-0 text-xs text-muted">{note}</span>}
+              </div>
+
+              {top.length ? (
+                <ul className="mt-4 space-y-3">
+                  {top.map((c, j) => (
+                    <li key={c.id} className="grid grid-cols-[auto_1fr_auto] items-center gap-x-3">
+                      <CandidatePhoto
+                        src={c.photo}
+                        name={c.name}
+                        color={partyColor(c.party, j)}
+                        size={j === 0 ? 44 : 36}
+                      />
+                      <div className="min-w-0">
+                        <p className={cn('truncate text-sm', j === 0 && 'font-semibold')}>{c.name}</p>
+                        <PartyChip party={c.party} className="mt-1" />
+                      </div>
+                      <span className={cn('tabular', j === 0 ? 'text-lg font-semibold' : 'text-sm text-ink-2')}>
+                        {fmtPct(c.pct)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <div className="mt-4 space-y-3" aria-hidden>
+                  <Skeleton className="h-11 w-full" />
+                  <Skeleton className="h-9 w-4/5" />
+                </div>
+              )}
+
+              {margin !== undefined && (
+                <p className="mt-auto flex items-center justify-between pt-4 text-xs text-muted">
+                  <span>
+                    Vantagem de{' '}
+                    <strong className="font-semibold text-ink-2 tabular">
+                      {margin.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} p.p.
+                    </strong>
+                  </span>
+                  <span className="font-medium text-ink-2 opacity-0 transition group-hover:opacity-100">
+                    Municípios
+                  </span>
+                </p>
+              )}
+            </Link>
+          </li>
+        )
+      })}
+    </ul>
   )
 }
 
