@@ -1,9 +1,9 @@
-import { CalendarBlank, ListNumbers } from '@phosphor-icons/react'
+import { ListNumbers } from '@phosphor-icons/react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { CandidatesExplorer } from '../components/candidates/CandidatesExplorer'
 import { NationalExplorer } from '../components/results/NationalExplorer'
 import { Container, EmptyState, Segmented } from '../components/ui'
-import { findOffice, getCycle, KNOWN_IDS, type Turn } from '../config/elections'
-import { fmtDateLong } from '../lib/format'
+import { findOffice, getCycle, KNOWN_IDS, todayBrasilia, type Turn } from '../config/elections'
 import { defaultTurn } from '../lib/phase'
 import { useElectionIds } from '../lib/tse/queries'
 import { NotFound } from './NotFound'
@@ -14,7 +14,7 @@ export function OfficePage() {
   const navigate = useNavigate()
   const cycle = getCycle(Number(params.ano))
   const office = cycle && findOffice(cycle, params.cargo)
-  const { ids, loading } = useElectionIds(cycle?.year ?? 0)
+  const { ids } = useElectionIds(cycle?.year ?? 0)
 
   if (!cycle || !office) return <NotFound />
 
@@ -41,7 +41,7 @@ export function OfficePage() {
             options={years.map((y) => ({ value: String(y), label: String(y) }))}
           />
         )}
-        {office.hasRunoff && (
+        {office.hasRunoff && !(todayBrasilia() < cycle.dates[1]) && (
           <Segmented<Turn>
             label="Turno"
             value={turn}
@@ -56,25 +56,20 @@ export function OfficePage() {
     </div>
   )
 
-  const pending = !ids?.[1] && !loading
+  const upcoming = todayBrasilia() < cycle.dates[1]
 
   return (
     <Container className="pt-8 sm:pt-12">
-      {office.system === 'proporcional' || pending ? (
+      {office.system === 'proporcional' ? (
         <div className="max-w-3xl space-y-8">
           {header}
-          {office.system === 'proporcional' ? (
-            <EmptyState icon={<ListNumbers className="h-7 w-7" />} title="Resultados proporcionais em breve">
-              Bancadas, quociente eleitoral e lista de eleitos para {office.name.toLowerCase()} entram na próxima
-              fase do portal.
-            </EmptyState>
-          ) : (
-            <EmptyState icon={<CalendarBlank className="h-7 w-7" />} title={`A apuração de ${cycle.year} ainda não começou`}>
-              O 1º turno será em {fmtDateLong(cycle.dates[1])}. A divulgação começa às 17h (Brasília) e esta página
-              passa a mostrar os resultados sozinha.
-            </EmptyState>
-          )}
+          <EmptyState icon={<ListNumbers className="h-7 w-7" />} title="Resultados proporcionais em breve">
+            Bancadas, quociente eleitoral e lista de eleitos para {office.name.toLowerCase()} entram na próxima fase
+            do portal.
+          </EmptyState>
         </div>
+      ) : upcoming ? (
+        <CandidatesExplorer cycle={cycle} ids={ids} office={office} header={header} />
       ) : (
         <NationalExplorer cycle={cycle} ids={ids} office={office} turn={turn} header={header} />
       )}

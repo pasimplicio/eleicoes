@@ -67,3 +67,17 @@ O navegador nunca chama o TSE diretamente. As respostas ficam no CDN da Vercel p
 - Malhas: <https://servicodados.ibge.gov.br/api/docs/malhas>
 
 Portal independente, sem vínculo com a Justiça Eleitoral.
+
+## Candidatos antes da eleição
+
+Enquanto uma eleição não acontece, o portal mostra as candidaturas registradas, buscando em ordem:
+
+1. **Servidor de resultados do TSE**, automaticamente, assim que o TSE publica o ciclo (dias antes da votação).
+2. **`public/data/candidatos-<ano>.json`**, coletado do DivulgaCandContas.
+
+O DivulgaCandContas e o Portal de Dados Abertos bloqueiam acessos vindos de servidores, incluindo a Vercel.
+Por isso a coleta roda no navegador:
+
+1. Abra <https://divulgacandcontas.tse.jus.br/divulga/> no Chrome ou Edge.
+2. Pressione F12, abra a aba **Console**, cole o conteúdo de `scripts/coletar-candidatos.js` e tecle Enter.
+3. Salve o arquivo baixado em `public/data/` e faça o push.

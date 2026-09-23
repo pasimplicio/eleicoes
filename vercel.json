@@ -11,7 +11,7 @@
       "destination": "/api/divulgacand?p=:path*"
     },
     {
-      "source": "/((?!api/|tse/|cand/|geo/|assets/).*)",
+      "source": "/((?!api/|tse/|cand/|geo/|data/|assets/).*)",
       "destination": "/index.html"
     }
   ],

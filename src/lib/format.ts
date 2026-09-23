@@ -33,8 +33,16 @@ export function cn(...parts: (string | false | null | undefined)[]) {
 
 /** "SÃO JOSÉ DOS CAMPOS" -> "São José dos Campos" (nomes publicados em caixa alta pelo TSE). */
 export function titleCase(name: string): string {
-  return name
+  return decodeEntities(name)
     .toLocaleLowerCase('pt-BR')
     .replace(/(^|[\s'-])(\p{L})/gu, (_, sep: string, ch: string) => sep + ch.toLocaleUpperCase('pt-BR'))
-    .replace(/(?<=\s)(Da|De|Do|Das|Dos|E|D')(?=\s|\p{L})/gu, (w) => w.toLowerCase())
+    .replace(/(?<=\s)(Da|De|Do|Das|Dos|E)(?=\s)/gu, (w) => w.toLowerCase())
+    .replace(/(?<=\s)D'(?=\p{L})/gu, "d'")
+}
+
+/** O TSE publica alguns textos com entidades HTML ("D&apos;AVILA", "1&#186;"). */
+export function decodeEntities(s: string): string {
+  return s
+    .replace(/&#(\d+);/g, (_, n: string) => String.fromCodePoint(Number(n)))
+    .replace(/&(apos|quot|amp|lt|gt);/g, (_, e: string) => ({ apos: "'", quot: '"', amp: '&', lt: '<', gt: '>' })[e]!)
 }

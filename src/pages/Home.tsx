@@ -1,54 +1,98 @@
 import { ArrowRight, ChartLineUp, SealCheck, Scales } from '@phosphor-icons/react'
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
+import { CandidatesExplorer } from '../components/candidates/CandidatesExplorer'
 import { Countdown } from '../components/Countdown'
 import { MoreLink, NationalExplorer } from '../components/results/NationalExplorer'
 import { Container, LiveBadge, Segmented, SectionHeading } from '../components/ui'
-import type { Turn } from '../config/elections'
+import { getCycle, KNOWN_IDS, type Turn } from '../config/elections'
+import { useSnapshot } from '../lib/candidates'
 import { fmtDateLong } from '../lib/format'
-import { resultsStart, useFeaturedCycle } from '../lib/phase'
+import { defaultTurn, resultsStart, useFeaturedCycle } from '../lib/phase'
+import { useElectionIds } from '../lib/tse/queries'
+
+const UPCOMING_TITLE: Record<string, string> = {
+  presidente: 'Quem disputa a Presidência',
+  governador: 'Quem disputa os governos estaduais',
+  senador: 'Quem disputa o Senado',
+  prefeito: 'Quem disputa as prefeituras',
+}
 
 export function Home() {
   const f = useFeaturedCycle()
-  const offices = f.display.offices.filter((o) => o.system === 'majoritario')
+  const [search, setSearch] = useSearchParams()
+  const snapshot = useSnapshot(f.cycle.year)
+
+  // Anos do mesmo tipo de eleição (geral ou municipal) com dados, mais o ciclo corrente.
+  const years = [...new Set([f.cycle.year, ...Object.keys(KNOWN_IDS).map(Number)])]
+    .filter((y) => getCycle(y)?.kind === f.cycle.kind)
+    .sort((a, b) => b - a)
+  const hasCandidates = Boolean(f.ids?.[1]) || Boolean(snapshot.data)
+  const defaultYear = f.started || hasCandidates ? f.cycle.year : f.display.year
+  const yearParam = Number(search.get('ano'))
+  const year = years.includes(yearParam) ? yearParam : defaultYear
+  const cycle = getCycle(year)!
+  const { ids } = useElectionIds(year)
+  const upcoming = year === f.cycle.year && !f.started
+
+  const offices = cycle.offices.filter((o) => o.system === 'majoritario')
   const [officeSlug, setOfficeSlug] = useState(offices[0].slug)
   const office = offices.find((o) => o.slug === officeSlug) ?? offices[0]
   const [turnChoice, setTurn] = useState<Turn | null>(null)
-  const turn: Turn = office.hasRunoff ? (turnChoice ?? f.turn) : 1
+  const baseTurn: Turn = year === f.cycle.year ? f.turn : defaultTurn(cycle, Boolean(ids?.[2]))
+  const turn: Turn = office.hasRunoff ? (turnChoice ?? baseTurn) : 1
+
+  const setYear = (y: string) => {
+    const next = new URLSearchParams()
+    next.set('ano', y)
+    setTurn(null)
+    setSearch(next, { replace: true, preventScrollReset: true })
+  }
+
+  const kicker = upcoming
+    ? `Eleições ${cycle.year}, candidaturas registradas`
+    : year === f.cycle.year && f.live
+      ? null
+      : `Resultado final, eleições de ${year}`
 
   const header = (
     <div>
-      {f.live ? (
-        <LiveBadge />
-      ) : (
-        <p className="text-sm font-medium text-muted">
-          {f.started ? `Resultado final, ${f.display.year}` : `Referência: eleição de ${f.display.year}`}
-        </p>
-      )}
+      {kicker === null ? <LiveBadge /> : <p className="text-sm font-medium text-muted">{kicker}</p>}
       <h1 className="mt-2 font-serif text-[2.5rem] leading-[1.05] font-semibold tracking-tight sm:text-5xl">
-        {f.started ? `Apuração para ${office.name.toLowerCase()}` : `O voto para ${office.name.toLowerCase()} em ${f.display.year}`}
+        {upcoming
+          ? (UPCOMING_TITLE[office.slug] ?? `Candidatos a ${office.name.toLowerCase()}`)
+          : year === f.cycle.year
+            ? `Apuração para ${office.name.toLowerCase()}`
+            : `O voto para ${office.name.toLowerCase()} em ${year}`}
       </h1>
-      {!f.started && (
+      {upcoming && (
         <p className="mt-4 max-w-[46ch] leading-relaxed text-ink-2">
-          A apuração de {f.cycle.year} começa em {fmtDateLong(f.cycle.dates[1])}. Até lá, veja o resultado final da
-          última eleição {f.display.kind === 'geral' ? 'geral' : 'municipal'}.
+          O 1º turno é em {fmtDateLong(cycle.dates[1])}. Conheça as candidaturas registradas na Justiça Eleitoral.
         </p>
       )}
       <div className="mt-6 flex flex-wrap gap-2">
+        {years.length > 1 && (
+          <Segmented
+            label="Ano da eleição"
+            value={String(year)}
+            onChange={setYear}
+            options={years.map((y) => ({ value: String(y), label: String(y) }))}
+          />
+        )}
         <Segmented
           label="Cargo"
           value={office.slug}
           onChange={setOfficeSlug}
           options={offices.map((o) => ({ value: o.slug, label: o.name }))}
         />
-        {office.hasRunoff && (
+        {office.hasRunoff && !upcoming && (
           <Segmented<Turn>
             label="Turno"
             value={turn}
             onChange={setTurn}
             options={[
               { value: 1, label: '1º turno' },
-              { value: 2, label: '2º turno', disabled: !f.displayIds?.[2], hint: 'Ainda não houve 2º turno' },
+              { value: 2, label: '2º turno', disabled: !ids?.[2], hint: 'Ainda não houve 2º turno' },
             ]}
           />
         )}
@@ -59,15 +103,19 @@ export function Home() {
   return (
     <>
       <Container className="pt-8 sm:pt-12">
-        <NationalExplorer cycle={f.display} ids={f.displayIds} office={office} turn={turn} header={header} />
+        {upcoming ? (
+          <CandidatesExplorer cycle={cycle} ids={ids} office={office} header={header} />
+        ) : (
+          <NationalExplorer cycle={cycle} ids={ids} office={office} turn={turn} header={header} />
+        )}
         <div className="mt-6">
-          <MoreLink to={`/${f.display.year}/${office.slug}?turno=${turn}`}>
+          <MoreLink to={`/${year}/${office.slug}${upcoming ? '' : `?turno=${turn}`}`}>
             Página completa de {office.name.toLowerCase()}
           </MoreLink>
         </div>
       </Container>
 
-      {!f.started && (
+      {!f.started && !upcoming && (
         <Container className="mt-20">
           <SectionHeading title={`Calendário de ${f.cycle.year}`} />
           <div className="grid gap-8 md:grid-cols-[1fr_1fr_minmax(0,1.3fr)] md:items-start">
