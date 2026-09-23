@@ -1,4 +1,5 @@
 @import '@fontsource-variable/geist';
+@import '@fontsource-variable/open-sans';
 @import '@fontsource-variable/newsreader/opsz.css';
 @import 'tailwindcss';
 
@@ -146,6 +147,33 @@
 .map-shape:focus-visible {
   stroke: var(--color-ink);
   stroke-width: 2.5px;
+}
+
+/* Modo telão: paleta do app Resultados do TSE, sempre em tema claro. */
+.telao {
+  --tse-primary: #2e4f9c;
+  --tse-primary-alt: #123b99;
+  --tse-secundary: #b0c1e8;
+  --tse-tertiary: #7284af;
+  --color-map-stroke: #ffffff;
+  --color-map-empty: #e3e5ea;
+  --color-ink: #111111;
+  --color-surface: #ffffff;
+  color-scheme: light;
+  background: #f3f3f3;
+  color: #222;
+  font-family: 'Open Sans Variable', 'Open Sans', system-ui, sans-serif;
+}
+.telao-fab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 9999px;
+  background: #fdb035;
+  color: #fff;
+  cursor: pointer;
 }
 
 @media (prefers-reduced-motion: reduce) {

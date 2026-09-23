@@ -70,6 +70,7 @@ export function Layout() {
     ...(f.cycle.kind === 'geral' ? [{ to: `/${f.cycle.year}/deputado-federal`, label: 'Deputados', end: false }] : []),
     { to: '/pesquisas', label: 'Pesquisas', end: false },
     { to: '/sobre', label: 'Metodologia', end: false },
+    { to: '/telao', label: 'Telão', end: false },
   ]
 
   return (

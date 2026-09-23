@@ -7,6 +7,8 @@ import { NotFound } from './pages/NotFound'
 import { OfficePage } from './pages/OfficePage'
 import { PollsPage } from './pages/PollsPage'
 import { StatePage } from './pages/StatePage'
+import { Telao } from './pages/Telao'
+import { TelaoConfig } from './pages/TelaoConfig'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -18,6 +20,8 @@ const queryClient = new QueryClient({
 })
 
 const router = createBrowserRouter([
+  { path: '/telao', element: <Telao /> },
+  { path: '/telao/configurar', element: <TelaoConfig /> },
   {
     element: <Layout />,
     children: [
