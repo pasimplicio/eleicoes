@@ -80,13 +80,16 @@ export function findOffice(cycle: Cycle, slug?: string): Office | undefined {
   return cycle.offices.find((o) => o.slug === slug)
 }
 
+/** Relógio do portal (horário real). */
+export const appNow = () => new Date()
+
 /** Data de hoje no fuso de Brasília (AAAA-MM-DD). */
-export function todayBrasilia(now = new Date()): string {
+export function todayBrasilia(now = appNow()): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(now)
 }
 
 /** Ciclo em destaque: o do ano eleitoral corrente ou, em ano ímpar, o próximo. */
-export function currentYear(now = new Date()): number {
+export function currentYear(now = appNow()): number {
   const year = Number(todayBrasilia(now).slice(0, 4))
   return year % 2 === 0 ? year : year + 1
 }

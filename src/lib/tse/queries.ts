@@ -2,6 +2,8 @@ import { queryOptions, useQueries, useQuery } from '@tanstack/react-query'
 import type { Cycle, ElectionIds, Office, Turn } from '../../config/elections'
 import { UFS } from '../../config/ufs'
 import { titleCase } from '../format'
+import { livePolling } from '../live'
+import { currentYear } from '../../config/elections'
 import { adaptFixed, adaptSimplified, adaptVotes } from './adapter'
 import { knownIds, parseElectionConfig } from './discovery'
 import type { ResultSummary } from './model'
@@ -23,11 +25,6 @@ export async function getJson<T>(url: string): Promise<T> {
 }
 
 const notFound = (err: unknown) => err instanceof HttpError && err.status === 404
-const LIVE_INTERVAL = 30_000
-
-/** Enquanto a totalização não termina, os dados são atualizados a cada 30 s. */
-const liveRefetch = (q: { state: { data?: ResultSummary | null } }) =>
-  q.state.data && !q.state.data.final ? LIVE_INTERVAL : false
 
 const retry = (count: number, err: unknown) => !notFound(err) && count < 2
 
@@ -39,8 +36,9 @@ export function useElectionIds(year: number): { ids?: ElectionIds; loading: bool
     queryKey: ['tse-config'],
     queryFn: () => getJson<RawElectionConfig>(ELECTION_CONFIG_PATH),
     enabled: !known,
-    staleTime: 5 * 60_000,
-    refetchInterval: known ? false : 10 * 60_000,
+    staleTime: 60_000,
+    // Os códigos do ciclo corrente aparecem na config do TSE perto da eleição.
+    refetchInterval: known ? false : year === currentYear() ? 2 * 60_000 : 10 * 60_000,
   })
   if (known) return { ids: known, loading: false }
   return { ids: config.data ? parseElectionConfig(config.data, year) : undefined, loading: config.isLoading }
@@ -79,7 +77,7 @@ export function resultQuery({ cycle, ids, office, turn }: Target, abr: string) {
     queryKey: ['result', cycle.tse, office.code, turn, abr, ele1, ele2],
     enabled: Boolean(ele1),
     retry,
-    refetchInterval: liveRefetch,
+    refetchInterval: livePolling(cycle, turn),
     queryFn: async (): Promise<ResultSummary | null> => {
       if (ele2) {
         try {
@@ -124,7 +122,7 @@ export function useCityResult(target: Target, uf: string, mun: string | undefine
     queryKey: ['city', cycle.tse, office.code, turn, ufl, mun],
     enabled: Boolean(mun && electionId(ids, office, 1)),
     retry,
-    refetchInterval: liveRefetch,
+    refetchInterval: livePolling(cycle, turn),
     queryFn: async (): Promise<ResultSummary | null> => {
       const candidates = [turn === 2 ? electionId(ids, office, 2) : undefined, electionId(ids, office, 1)]
       for (const ele of candidates) {
@@ -198,7 +196,7 @@ export function useMunicipalLeaders(target: Target, uf: string) {
     queryKey: ['municipal-map', cycle.tse, office.code, turn, ufl],
     enabled: Boolean(electionId(ids, office, 1)),
     retry,
-    refetchInterval: (q) => (q.state.data && !q.state.data.final ? LIVE_INTERVAL : false),
+    refetchInterval: livePolling(cycle, turn),
     queryFn: async () => {
       const eles = [turn === 2 ? electionId(ids, office, 2) : undefined, electionId(ids, office, 1)]
       for (const ele of eles) {

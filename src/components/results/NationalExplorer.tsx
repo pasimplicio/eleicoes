@@ -29,7 +29,7 @@ export function NationalExplorer({ cycle, ids, office, turn, header }: Props) {
   const navigate = useNavigate()
   const target = { cycle, ids, office, turn }
   const national = useResult(target, 'br')
-  const { byUf, loaded } = useUfResults(target)
+  const { byUf, loaded, loading } = useUfResults(target)
   const isNational = office.scope === 'br'
   const stateHref = (sigla: string) => `/${cycle.year}/${office.slug}/${sigla.toLowerCase()}?turno=${turn}`
 
@@ -45,7 +45,7 @@ export function NationalExplorer({ cycle, ids, office, turn, header }: Props) {
   const focus = region === 'Brasil' ? undefined : ufsInView.map((u) => u.ibge)
   const inView = Object.fromEntries(ufsInView.map((u) => [u.sigla, byUf[u.sigla]])) as ByUf
 
-  const noData = !national.isLoading && loaded === 0 && (national.data === null || !isNational)
+  const noData = !national.isFetching && !loading && loaded === 0 && !national.data
   const headline = isNational ? national.data : undefined
 
   return (

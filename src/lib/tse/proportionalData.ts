@@ -10,6 +10,7 @@ import { useQuery } from '@tanstack/react-query'
 import type { Cycle, ElectionIds, Office } from '../../config/elections'
 import { partyColor } from '../../config/parties'
 import { byStatusThenName } from '../candidates'
+import { livePolling } from '../live'
 import { decodeEntities, titleCase } from '../format'
 import { allocate, thirdPhaseRule, type CandidateOutcome, type ThirdPhaseRule } from '../proportional'
 import { photoPath, simplifiedPath, BASE } from './paths'
@@ -158,7 +159,7 @@ export function useProportional(cycle: Cycle, ids: ElectionIds | undefined, offi
   return useQuery({
     queryKey: ['proportional', cycle.tse, ele, code, ufl],
     enabled: Boolean(ele),
-    refetchInterval: (q) => (q.state.data && !q.state.data.final ? 60_000 : false),
+    refetchInterval: livePolling(cycle, 1, 60_000),
     queryFn: async (): Promise<ProportionalData | null> => {
       const c4 = code.padStart(4, '0')
       const e6 = ele!.padStart(6, '0')

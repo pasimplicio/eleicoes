@@ -98,6 +98,6 @@ export interface RawElectionConfig {
   pl: {
     cd: string
     dt: string
-    e: { cd: string; t: string; nm: string; tp: string }[]
+    e: { cd: string; t: string; nm: string; tp: string; abr?: { cd: string; cp?: { cd: string }[] }[] }[]
   }[]
 }

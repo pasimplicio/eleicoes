@@ -1,4 +1,5 @@
 import { currentYear, getCycle, previousCycleOfKind, todayBrasilia, type Cycle, type Turn } from '../config/elections'
+import { useClock } from './live'
 import { useElectionIds } from './tse/queries'
 
 /** Instante de início da divulgação: fim da votação, 17h de Brasília. */
@@ -13,6 +14,7 @@ export function defaultTurn(cycle: Cycle, hasTurn2: boolean, today = todayBrasil
  * ou o último ciclo do mesmo tipo como referência.
  */
 export function useFeaturedCycle() {
+  useClock(60_000)
   const today = todayBrasilia()
   const year = currentYear()
   const cycle = getCycle(year)!

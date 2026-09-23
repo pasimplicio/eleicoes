@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { appNow } from '../config/elections'
 
 function parts(ms: number) {
   const s = Math.max(0, Math.floor(ms / 1000))
@@ -6,9 +7,9 @@ function parts(ms: number) {
 }
 
 function useNow(intervalMs: number) {
-  const [now, setNow] = useState(() => Date.now())
+  const [now, setNow] = useState(() => appNow().getTime())
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), intervalMs)
+    const id = setInterval(() => setNow(appNow().getTime()), intervalMs)
     return () => clearInterval(id)
   }, [intervalMs])
   return now
