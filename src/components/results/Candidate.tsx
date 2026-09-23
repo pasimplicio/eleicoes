@@ -24,13 +24,16 @@ export function CandidatePhoto({
   return (
     <div
       className="relative shrink-0 overflow-hidden rounded-full bg-surface-2"
-      style={{ width: size, height: size, boxShadow: `0 0 0 2px var(--color-surface), 0 0 0 4px ${color}` }}
+      style={{ width: size, height: size, boxShadow: `0 0 0 2px var(--color-surface), 0 0 0 ${size > 44 ? 4 : 3}px ${color}` }}
     >
       {src && !failed ? (
         <img
           src={src}
-          alt={name}
+          alt={`Foto de ${name}`}
+          width={size}
+          height={size}
           loading="lazy"
+          decoding="async"
           onError={() => setFailed(true)}
           className="h-full w-full object-cover object-top"
         />
@@ -52,21 +55,20 @@ export function PartyChip({ party, className }: { party: string; className?: str
   const color = partyColor(party)
   return (
     <span
-      className={cn('inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-semibold', className)}
-      style={{ background: `color-mix(in srgb, ${color} 14%, transparent)`, color: `color-mix(in srgb, ${color} 80%, var(--color-ink))` }}
+      className={cn('inline-flex items-center rounded-full px-2 py-px text-xs font-semibold', className)}
+      style={{
+        background: `color-mix(in srgb, ${color} 13%, transparent)`,
+        color: `color-mix(in srgb, ${color} var(--chip-mix), var(--color-ink))`,
+      }}
     >
-      <span className="h-1.5 w-1.5 rounded-full" style={{ background: color }} />
       {party}
     </span>
   )
 }
 
 export function StatusBadge({ elected, runoff, final }: { elected: boolean; runoff: boolean; final: boolean }) {
-  if (elected)
-    return <span className="rounded-md bg-ok px-2 py-0.5 text-[11px] font-bold tracking-wide text-white uppercase">Eleito</span>
+  if (elected) return <span className="rounded-full bg-ok px-2 py-px text-xs font-semibold text-white">Eleito</span>
   if (runoff && final)
-    return (
-      <span className="rounded-md bg-accent px-2 py-0.5 text-[11px] font-bold tracking-wide text-brand uppercase">2º turno</span>
-    )
+    return <span className="rounded-full bg-accent px-2 py-px text-xs font-semibold text-on-accent">2º turno</span>
   return null
 }

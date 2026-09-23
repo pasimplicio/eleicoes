@@ -1,69 +1,94 @@
-import { Card } from '../components/ui'
+import { ArrowSquareOut } from '@phosphor-icons/react'
+import { Container, SectionHeading } from '../components/ui'
 
 const SOURCES = [
   {
-    name: 'Divulgação de resultados — TSE',
+    name: 'Divulgação de resultados do TSE',
     url: 'https://resultados.tse.jus.br',
-    use: 'Apuração em tempo real por país, UF e município; candidatos, fotos e totais de comparecimento.',
+    use: 'Apuração por país, estado e município; candidatos, fotos e comparecimento.',
   },
   {
-    name: 'PesqEle — TSE',
+    name: 'PesqEle, do TSE',
     url: 'https://pesqele-divulgacao.tse.jus.br',
-    use: 'Registro oficial de pesquisas eleitorais: instituto, contratante, metodologia e número de registro.',
+    use: 'Registro oficial de pesquisas: instituto, contratante, metodologia e número de registro.',
   },
   {
-    name: 'Portal de Dados Abertos — TSE',
+    name: 'Portal de Dados Abertos do TSE',
     url: 'https://dadosabertos.tse.jus.br',
-    use: 'Séries históricas de votação e candidaturas para comparações entre eleições.',
+    use: 'Séries históricas de votação e candidaturas para comparar eleições.',
   },
   {
-    name: 'Malhas territoriais — IBGE',
+    name: 'Malhas territoriais do IBGE',
     url: 'https://servicodados.ibge.gov.br/api/docs/malhas',
     use: 'Contornos de estados e municípios usados nos mapas.',
   },
 ]
 
+const STEPS = [
+  {
+    t: 'O TSE publica',
+    d: 'Os arquivos de apuração saem à medida que as seções são totalizadas, a partir das 17h (Brasília).',
+  },
+  {
+    t: 'Guardamos por segundos',
+    d: 'Nossos servidores leem os arquivos e os mantêm por até 30 segundos, sem sobrecarregar a Justiça Eleitoral.',
+  },
+  {
+    t: 'A página se atualiza',
+    d: 'Enquanto a totalização não termina, os números são renovados a cada 30 segundos, sem recarregar.',
+  },
+  {
+    t: 'Como ler os números',
+    d: 'Percentuais sobre votos válidos, como na divulgação oficial. A cor indica quem está à frente; tom mais forte, vantagem maior.',
+  },
+]
+
 export function AboutPage() {
   return (
-    <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
-      <h1 className="font-serif text-4xl font-semibold tracking-tight sm:text-5xl">Fontes e metodologia</h1>
-      <p className="mt-4 text-lg text-ink-2">
-        O Apuração Brasil é um portal independente. Não somos um canal oficial da Justiça Eleitoral: exibimos os
-        dados públicos que ela divulga, sem alterar nenhum número.
-      </p>
+    <Container className="pt-8 sm:pt-12">
+      <div className="max-w-3xl">
+        <h1 className="font-serif text-[2.5rem] leading-[1.05] font-semibold tracking-tight sm:text-5xl">
+          Metodologia e fontes
+        </h1>
+        <p className="mt-5 text-lg leading-relaxed text-ink-2">
+          O Apuração Brasil é independente e não é um canal oficial da Justiça Eleitoral. Exibimos os dados públicos
+          que ela divulga, sem alterar nenhum número.
+        </p>
+      </div>
 
-      <Card className="mt-10">
-        <h2 className="font-serif text-2xl font-semibold">Fontes</h2>
-        <ul className="mt-4 divide-y divide-line">
+      <section className="mt-16">
+        <SectionHeading title="Do TSE até a sua tela" />
+        <ol className="grid gap-x-10 gap-y-8 md:grid-cols-2 xl:grid-cols-4">
+          {STEPS.map((s) => (
+            <li key={s.t} className="border-l-2 border-accent pl-4">
+              <p className="font-semibold">{s.t}</p>
+              <p className="mt-1.5 text-sm leading-relaxed text-muted">{s.d}</p>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      <section className="mt-16">
+        <SectionHeading title="Fontes oficiais" />
+        <ul className="grid gap-4 md:grid-cols-2">
           {SOURCES.map((s) => (
-            <li key={s.url} className="py-4">
-              <a href={s.url} target="_blank" rel="noreferrer" className="font-semibold hover:underline">
-                {s.name}
+            <li key={s.url}>
+              <a
+                href={s.url}
+                target="_blank"
+                rel="noreferrer"
+                className="group flex h-full items-start justify-between gap-4 rounded-lg border border-line bg-surface p-5 transition hover:border-ink/30"
+              >
+                <span>
+                  <span className="font-semibold group-hover:underline">{s.name}</span>
+                  <span className="mt-1 block text-sm leading-relaxed text-muted">{s.use}</span>
+                </span>
+                <ArrowSquareOut className="mt-0.5 h-4 w-4 shrink-0 text-muted" aria-hidden />
               </a>
-              <p className="mt-1 text-sm text-muted">{s.use}</p>
             </li>
           ))}
         </ul>
-      </Card>
-
-      <Card className="mt-6">
-        <h2 className="font-serif text-2xl font-semibold">Como os dados chegam até você</h2>
-        <ol className="mt-4 list-decimal space-y-3 pl-5 text-ink-2">
-          <li>
-            O TSE publica os arquivos de apuração à medida que as seções são totalizadas, a partir das 17h (Brasília)
-            do dia da votação.
-          </li>
-          <li>
-            Nossos servidores leem esses arquivos e os guardam por no máximo 30 segundos. Assim, milhões de acessos
-            não sobrecarregam os sistemas da Justiça Eleitoral.
-          </li>
-          <li>Enquanto a totalização não termina, a página se atualiza automaticamente a cada 30 segundos.</li>
-          <li>
-            Percentuais são sobre votos válidos (excluídos brancos e nulos), como na divulgação oficial. A cor de cada
-            estado ou município indica o candidato à frente; tons mais fortes indicam vantagem maior.
-          </li>
-        </ol>
-      </Card>
-    </div>
+      </section>
+    </Container>
   )
 }

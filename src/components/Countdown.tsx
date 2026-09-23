@@ -2,25 +2,46 @@ import { useEffect, useState } from 'react'
 
 function parts(ms: number) {
   const s = Math.max(0, Math.floor(ms / 1000))
-  return { dias: Math.floor(s / 86400), horas: Math.floor((s % 86400) / 3600), min: Math.floor((s % 3600) / 60), seg: s % 60 }
+  return { d: Math.floor(s / 86400), h: Math.floor((s % 86400) / 3600), m: Math.floor((s % 3600) / 60), s: s % 60 }
 }
 
-/** Contagem regressiva até um instante (ISO com fuso). */
-export function Countdown({ to }: { to: string }) {
-  const target = new Date(to).getTime()
+function useNow(intervalMs: number) {
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1000)
+    const id = setInterval(() => setNow(Date.now()), intervalMs)
     return () => clearInterval(id)
-  }, [])
-  const p = parts(target - now)
+  }, [intervalMs])
+  return now
+}
 
+const pad = (n: number) => String(n).padStart(2, '0')
+
+/** Contagem regressiva compacta ("11d 03h 08m"), atualizada a cada minuto. */
+export function CountdownInline({ to }: { to: string }) {
+  const p = parts(new Date(to).getTime() - useNow(30_000))
   return (
-    <div className="flex gap-2 sm:gap-3" role="timer" aria-live="off">
-      {Object.entries(p).map(([k, v]) => (
-        <div key={k} className="min-w-16 rounded-xl bg-white/8 px-3 py-2 text-center ring-1 ring-white/10 sm:min-w-20">
-          <div className="text-3xl font-bold text-white tabular sm:text-4xl">{String(v).padStart(2, '0')}</div>
-          <div className="text-[11px] font-semibold tracking-widest text-white/55 uppercase">{k}</div>
+    <time dateTime={to} className="tabular">
+      {p.d > 0 && `${p.d}d `}
+      {pad(p.h)}h {pad(p.m)}min
+    </time>
+  )
+}
+
+/** Contagem regressiva em blocos, com segundos. */
+export function Countdown({ to }: { to: string }) {
+  const p = parts(new Date(to).getTime() - useNow(1000))
+  const items = [
+    { v: p.d, l: 'dias' },
+    { v: p.h, l: 'horas' },
+    { v: p.m, l: 'min' },
+    { v: p.s, l: 'seg' },
+  ]
+  return (
+    <div className="grid grid-cols-4 gap-2" role="timer" aria-live="off">
+      {items.map(({ v, l }) => (
+        <div key={l} className="rounded-md border border-line bg-surface px-2 py-2.5 text-center">
+          <div className="text-3xl font-semibold tracking-tight tabular">{pad(v)}</div>
+          <div className="text-xs text-muted">{l}</div>
         </div>
       ))}
     </div>

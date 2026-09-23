@@ -47,7 +47,7 @@ export function ChoroplethMap({ src, label, fill, name, tooltip, onSelect, selec
   }, [topo])
 
   if (isLoading || !geo) {
-    return <div className={cn('skeleton aspect-square w-full rounded-2xl', className)} aria-busy="true" />
+    return <div className={cn('skeleton aspect-[1/1] w-full rounded-lg', className)} aria-busy="true" />
   }
 
   const move = (code: string, e: React.PointerEvent) => {
@@ -82,12 +82,12 @@ export function ChoroplethMap({ src, label, fill, name, tooltip, onSelect, selec
               aria-pressed={onSelect ? isSel : undefined}
               fill={fill(s.code) ?? 'var(--color-map-empty)'}
               stroke={isSel ? 'var(--color-ink)' : 'var(--color-map-stroke)'}
-              strokeWidth={isSel ? 2.5 : 0.8}
+              strokeWidth={isSel ? 2.5 : 0.75}
               vectorEffect="non-scaling-stroke"
               className={cn(
-                'transition-[filter,opacity] duration-150 outline-none',
-                onSelect && 'cursor-pointer hover:brightness-110 focus-visible:brightness-110',
-                hover && hover.code !== s.code && 'opacity-85',
+                'map-shape',
+                onSelect && 'cursor-pointer',
+                hover && hover.code !== s.code && 'opacity-70',
               )}
               onPointerMove={(e) => move(s.code, e)}
               onClick={() => onSelect?.(s.code)}
@@ -106,7 +106,8 @@ export function ChoroplethMap({ src, label, fill, name, tooltip, onSelect, selec
 
       {hover && tooltip && (
         <div
-          className="pointer-events-none absolute z-10 w-64 -translate-x-1/2 -translate-y-[calc(100%+14px)] rounded-xl border border-line bg-surface p-3 text-sm shadow-xl"
+          role="tooltip"
+          className="pointer-events-none absolute z-10 w-64 -translate-x-1/2 -translate-y-[calc(100%+14px)] rounded-lg border border-line bg-surface p-3 text-sm shadow-[0_12px_32px_rgb(17_20_24/0.16)]"
           style={{
             left: Math.min(Math.max(hover.x, 128), hover.w - 128),
             top: hover.y,

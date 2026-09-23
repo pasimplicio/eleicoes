@@ -1,6 +1,7 @@
 import { queryOptions, useQueries, useQuery } from '@tanstack/react-query'
 import type { Cycle, ElectionIds, Office, Turn } from '../../config/elections'
 import { UFS } from '../../config/ufs'
+import { titleCase } from '../format'
 import { adaptFixed, adaptSimplified, adaptVotes } from './adapter'
 import { knownIds, parseElectionConfig } from './discovery'
 import type { ResultSummary } from './model'
@@ -163,7 +164,15 @@ export function useStatic<T>(path: string | undefined) {
 }
 
 export function useMunicipalities(uf: string) {
-  return useStatic<Municipality[]>(`/geo/mun/${uf.toLowerCase()}.json`)
+  return useQuery({
+    queryKey: ['municipalities', uf],
+    queryFn: async () =>
+      (await getJson<Municipality[]>(`/geo/mun/${uf.toLowerCase()}.json`))
+        .map((m) => ({ ...m, nome: titleCase(m.nome) }))
+        .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
+    staleTime: Infinity,
+    gcTime: Infinity,
+  })
 }
 
 // ---------------------------------------------------------------- mapa municipal

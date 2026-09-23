@@ -32,12 +32,12 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg'],
       manifest: {
-        name: 'Apuração Brasil — Eleições',
+        name: 'Apuração Brasil | Eleições',
         short_name: 'Apuração',
         description: 'Resultados, mapas e pesquisas eleitorais com dados oficiais do TSE.',
         lang: 'pt-BR',
-        theme_color: '#0b1f3a',
-        background_color: '#ffffff',
+        theme_color: '#111418',
+        background_color: '#f3f4f6',
         display: 'standalone',
         start_url: '/',
         icons: [

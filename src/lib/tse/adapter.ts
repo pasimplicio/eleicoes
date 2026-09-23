@@ -1,3 +1,4 @@
+import { titleCase } from '../format'
 import type { CandidateResult, ResultSummary, Totals } from './model'
 import type { RawFixed, RawSimplified, RawTotals, RawVotes } from './raw'
 
@@ -7,13 +8,6 @@ const pct = (v?: string) => (v ? Number.parseFloat(v.replace(',', '.')) || 0 : 0
 /** "PT - Federação Brasil da Esperança..." -> "PT" */
 function partyFromCoalition(cc: string): string {
   return cc.split(' - ')[0]?.trim() ?? ''
-}
-
-function titleCase(name: string): string {
-  return name
-    .toLocaleLowerCase('pt-BR')
-    .replace(/(^|\s|-)(\p{L})/gu, (_, sep: string, ch: string) => sep + ch.toLocaleUpperCase('pt-BR'))
-    .replace(/\b(Da|De|Do|Das|Dos|E)\b/g, (w) => w.toLowerCase())
 }
 
 function status(st: string) {

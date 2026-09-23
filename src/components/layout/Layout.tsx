@@ -1,19 +1,13 @@
-import { Moon, Sun } from 'lucide-react'
+import { Moon, Sun } from '@phosphor-icons/react'
 import { useEffect, useState } from 'react'
 import { Link, NavLink, Outlet, ScrollRestoration } from 'react-router-dom'
-import { currentYear, getCycle } from '../../config/elections'
-import { cn } from '../../lib/format'
+import { cn, fmtDateLong } from '../../lib/format'
+import { resultsStart, useFeaturedCycle } from '../../lib/phase'
+import { CountdownInline } from '../Countdown'
+import { Container, LiveBadge } from '../ui'
 
 function useTheme() {
-  const [dark, setDark] = useState(() => {
-    try {
-      const saved = localStorage.getItem('theme')
-      if (saved) return saved === 'dark'
-    } catch {
-      /* armazenamento indisponível */
-    }
-    return window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false
-  })
+  const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'))
   useEffect(() => {
     document.documentElement.classList.toggle('dark', dark)
     try {
@@ -25,47 +19,82 @@ function useTheme() {
   return [dark, () => setDark((d) => !d)] as const
 }
 
-function Logo() {
+function Wordmark() {
   return (
-    <Link to="/" className="flex items-center gap-2.5" aria-label="Apuração Brasil — início">
-      <img src="/favicon.svg" alt="" className="h-8 w-8" />
-      <span className="leading-none">
-        <span className="block font-serif text-xl font-bold tracking-tight text-white">Apuração Brasil</span>
-        <span className="block text-[10px] font-semibold tracking-[0.2em] text-white/60 uppercase">Eleições</span>
-      </span>
+    <Link to="/" className="flex shrink-0 items-center gap-2.5" aria-label="Apuração Brasil, página inicial">
+      <img src="/favicon.svg" alt="" width={32} height={32} className="h-8 w-8 rounded-md dark:ring-1 dark:ring-white/20" />
+      <span className="font-serif text-[1.4rem] leading-none font-semibold tracking-tight">Apuração Brasil</span>
     </Link>
+  )
+}
+
+/** Faixa de status da eleição corrente: contagem regressiva ou "ao vivo". */
+function ElectionBar() {
+  const f = useFeaturedCycle()
+  return (
+    <div className="bg-brand text-on-brand">
+      <Container className="flex min-h-9 items-center gap-x-4 py-1.5 text-[13px] whitespace-nowrap">
+        <span className="font-semibold">
+          Eleições <span className="hidden sm:inline">{f.cycle.kind === 'geral' ? 'Gerais ' : 'Municipais '}</span>
+          {f.cycle.year}
+        </span>
+        {f.live ? (
+          <LiveBadge />
+        ) : f.started ? (
+          <span className="text-on-brand/70">Resultados finais</span>
+        ) : (
+          <>
+            <span className="hidden text-on-brand/70 sm:inline">1º turno em {fmtDateLong(f.cycle.dates[1])}</span>
+            <span className="ml-auto text-on-brand/70">
+              <span className="hidden sm:inline">Divulgação começa em </span>
+              <span className="sm:hidden">Resultados em </span>
+              <strong className="font-semibold text-accent">
+                <CountdownInline to={resultsStart(f.cycle.dates[1])} />
+              </strong>
+            </span>
+          </>
+        )}
+      </Container>
+    </div>
   )
 }
 
 export function Layout() {
   const [dark, toggle] = useTheme()
-  const year = currentYear()
-  const cycle = getCycle(year)!
+  const f = useFeaturedCycle()
   const nav = [
-    ...cycle.offices
+    { to: '/', label: 'Início', end: true },
+    ...f.cycle.offices
       .filter((o) => o.system === 'majoritario')
-      .map((o) => ({ to: `/${year}/${o.slug}`, label: o.name })),
-    { to: '/pesquisas', label: 'Pesquisas' },
-    { to: '/sobre', label: 'Fontes e metodologia' },
+      .map((o) => ({ to: `/${f.cycle.year}/${o.slug}`, label: o.name, end: false })),
+    { to: '/pesquisas', label: 'Pesquisas', end: false },
+    { to: '/sobre', label: 'Metodologia', end: false },
   ]
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <a href="#conteudo" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:bg-surface focus:p-3">
+      <a
+        href="#conteudo"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-md focus:bg-surface focus:px-4 focus:py-2"
+      >
         Pular para o conteúdo
       </a>
-      <header className="sticky top-0 z-40 bg-brand text-white shadow-[0_1px_0_rgba(255,255,255,0.08)]">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
-          <Logo />
-          <nav className="hidden items-center gap-1 md:flex" aria-label="Principal">
+      <ElectionBar />
+      <header className="sticky top-0 z-30 border-b border-line bg-surface/92 backdrop-blur-md supports-[not(backdrop-filter:blur(0))]:bg-surface">
+        <Container className="flex h-16 items-center gap-6">
+          <Wordmark />
+          <nav className="ml-auto hidden items-center lg:flex" aria-label="Principal">
             {nav.map((n) => (
               <NavLink
                 key={n.to}
                 to={n.to}
+                end={n.end}
                 className={({ isActive }) =>
                   cn(
-                    'rounded-lg px-3 py-2 text-sm font-medium transition',
-                    isActive ? 'bg-white/12 text-white' : 'text-white/75 hover:text-white',
+                    'relative flex h-16 items-center px-3 text-sm font-medium transition-colors',
+                    isActive
+                      ? 'text-ink after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:bg-ink'
+                      : 'text-muted hover:text-ink',
                   )
                 }
               >
@@ -76,21 +105,27 @@ export function Layout() {
           <button
             type="button"
             onClick={toggle}
-            className="rounded-lg p-2 text-white/80 transition hover:bg-white/10 hover:text-white"
+            className="ml-auto flex h-11 w-11 cursor-pointer items-center justify-center rounded-md text-ink-2 transition hover:bg-surface-2 hover:text-ink lg:ml-0"
             aria-label={dark ? 'Usar tema claro' : 'Usar tema escuro'}
           >
             {dark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
           </button>
-        </div>
-        <nav className="flex gap-1 overflow-x-auto px-3 pb-2 md:hidden" aria-label="Principal (celular)">
+        </Container>
+        <nav
+          className="flex gap-1 overflow-x-auto border-t border-line px-3 [scrollbar-width:none] lg:hidden"
+          aria-label="Principal (celular)"
+        >
           {nav.map((n) => (
             <NavLink
               key={n.to}
               to={n.to}
+              end={n.end}
               className={({ isActive }) =>
                 cn(
-                  'shrink-0 rounded-full px-3 py-1.5 text-sm font-medium whitespace-nowrap',
-                  isActive ? 'bg-white text-brand' : 'bg-white/10 text-white/85',
+                  'relative flex h-11 shrink-0 items-center px-3 text-sm font-medium whitespace-nowrap',
+                  isActive
+                    ? 'text-ink after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:bg-ink'
+                    : 'text-muted',
                 )
               }
             >
@@ -104,45 +139,44 @@ export function Layout() {
         <Outlet />
       </main>
 
-      <footer className="mt-16 border-t border-line bg-surface">
-        <div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 text-sm text-ink-2 sm:px-6 md:grid-cols-3">
+      <footer className="mt-24 border-t border-line bg-surface">
+        <Container className="grid gap-10 py-12 text-sm md:grid-cols-[1.4fr_1fr_1fr]">
           <div>
-            <p className="font-serif text-lg font-bold text-ink">Apuração Brasil</p>
-            <p className="mt-2 text-muted">
+            <Wordmark />
+            <p className="mt-4 max-w-sm leading-relaxed text-muted">
               Portal independente de acompanhamento eleitoral. Não é um canal oficial da Justiça Eleitoral.
             </p>
           </div>
           <div>
-            <p className="font-semibold text-ink">Fontes oficiais</p>
-            <ul className="mt-2 space-y-1">
+            <p className="font-semibold">Fontes oficiais</p>
+            <ul className="mt-3 space-y-2 text-ink-2">
               <li>
-                <a className="hover:underline" href="https://resultados.tse.jus.br" target="_blank" rel="noreferrer">
-                  Resultados — Tribunal Superior Eleitoral
+                <a className="hover:text-ink hover:underline" href="https://resultados.tse.jus.br" target="_blank" rel="noreferrer">
+                  Resultados do TSE
                 </a>
               </li>
               <li>
-                <a className="hover:underline" href="https://pesqele-divulgacao.tse.jus.br" target="_blank" rel="noreferrer">
-                  PesqEle — pesquisas registradas no TSE
+                <a className="hover:text-ink hover:underline" href="https://pesqele-divulgacao.tse.jus.br" target="_blank" rel="noreferrer">
+                  PesqEle, pesquisas registradas
                 </a>
               </li>
               <li>
-                <a className="hover:underline" href="https://www.ibge.gov.br/geociencias" target="_blank" rel="noreferrer">
-                  Malhas territoriais — IBGE
+                <a className="hover:text-ink hover:underline" href="https://www.ibge.gov.br/geociencias" target="_blank" rel="noreferrer">
+                  Malhas territoriais do IBGE
                 </a>
               </li>
             </ul>
           </div>
           <div>
-            <p className="font-semibold text-ink">Transparência</p>
-            <p className="mt-2 text-muted">
-              Os números exibidos vêm dos arquivos públicos de divulgação do TSE, sem edição.{' '}
-              <Link to="/sobre" className="font-medium text-ink underline">
-                Veja a metodologia
+            <p className="font-semibold">Transparência</p>
+            <p className="mt-3 leading-relaxed text-muted">
+              Os números vêm dos arquivos públicos de divulgação do TSE, sem edição.{' '}
+              <Link to="/sobre" className="font-medium text-ink underline underline-offset-2">
+                Metodologia
               </Link>
-              .
             </p>
           </div>
-        </div>
+        </Container>
       </footer>
       <ScrollRestoration />
     </div>

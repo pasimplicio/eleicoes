@@ -30,3 +30,11 @@ export function slugify(s: string): string {
 export function cn(...parts: (string | false | null | undefined)[]) {
   return parts.filter(Boolean).join(' ')
 }
+
+/** "SÃO JOSÉ DOS CAMPOS" -> "São José dos Campos" (nomes publicados em caixa alta pelo TSE). */
+export function titleCase(name: string): string {
+  return name
+    .toLocaleLowerCase('pt-BR')
+    .replace(/(^|[\s'-])(\p{L})/gu, (_, sep: string, ch: string) => sep + ch.toLocaleUpperCase('pt-BR'))
+    .replace(/(?<=\s)(Da|De|Do|Das|Dos|E|D')(?=\s|\p{L})/gu, (w) => w.toLowerCase())
+}
