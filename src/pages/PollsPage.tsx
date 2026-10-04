@@ -99,9 +99,9 @@ export function PollsPage() {
             value={modo}
             onChange={(v) => set({ instituto: v === 'Ambos' ? undefined : v })}
             options={[
-              { value: 'Ambos', label: 'Quaest e Datafolha' },
-              { value: 'Quaest', label: 'Só Quaest' },
-              { value: 'Datafolha', label: 'Só Datafolha' },
+              { value: 'Ambos', label: 'Ambos' },
+              { value: 'Quaest', label: 'Quaest' },
+              { value: 'Datafolha', label: 'Datafolha' },
             ]}
           />
         </div>
@@ -190,15 +190,15 @@ function LocalSelect({
 function PerguntaSelect({ value, options, onChange }: { value: string; options: string[]; onChange: (v: string) => void }) {
   const id = useId()
   return (
-    <div className="flex items-center gap-2">
-      <label htmlFor={id} className="text-sm font-medium text-muted">
+    <div className="flex w-full items-center gap-2 sm:w-auto">
+      <label htmlFor={id} className="shrink-0 text-sm font-medium text-muted">
         Pergunta
       </label>
       <select
         id={id}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="min-h-10 cursor-pointer rounded-md border border-line bg-surface px-3 text-base sm:text-sm"
+        className="min-h-10 w-full min-w-0 cursor-pointer rounded-md border border-line bg-surface px-3 text-base sm:w-auto sm:text-sm"
       >
         {options.map((o) => (
           <option key={o} value={o}>

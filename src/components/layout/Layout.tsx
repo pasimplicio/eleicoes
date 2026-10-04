@@ -33,7 +33,7 @@ function Wordmark() {
 function ElectionBar() {
   const f = useFeaturedCycle()
   return (
-    <div className="bg-brand text-on-brand">
+    <div className="bg-brand pt-[env(safe-area-inset-top)] text-on-brand">
       <Container className="flex min-h-9 items-center gap-x-4 py-1.5 text-[13px] whitespace-nowrap">
         <span className="font-semibold">
           Eleições <span className="hidden sm:inline">{f.cycle.kind === 'geral' ? 'Gerais ' : 'Municipais '}</span>
@@ -83,7 +83,7 @@ export function Layout() {
         Pular para o conteúdo
       </a>
       <ElectionBar />
-      <header className="sticky top-0 z-30 border-b border-line bg-surface/92 backdrop-blur-md supports-[not(backdrop-filter:blur(0))]:bg-surface">
+      <header className="sticky top-0 z-30 border-b border-line [@media(max-height:480px)]:static bg-surface/92 backdrop-blur-md supports-[not(backdrop-filter:blur(0))]:bg-surface">
         <Container className="flex h-16 items-center gap-6">
           <Wordmark />
           <nav className="ml-auto hidden items-center lg:flex" aria-label="Principal">
@@ -117,7 +117,7 @@ export function Layout() {
           </div>
         </Container>
         <nav
-          className="flex gap-1 overflow-x-auto border-t border-line px-3 [scrollbar-width:none] lg:hidden"
+          className="nav-scroll flex gap-1 overflow-x-auto border-t border-line px-3 [scrollbar-width:none] lg:hidden"
           aria-label="Principal (celular)"
         >
           {nav.map((n) => (

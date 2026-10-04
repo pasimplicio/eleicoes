@@ -98,7 +98,7 @@ export function Telao() {
 
       <div
         className={cn(
-          'fixed right-4 bottom-4 flex gap-4 transition-opacity',
+          'fixed right-[max(1rem,env(safe-area-inset-right))] bottom-[max(1rem,env(safe-area-inset-bottom))] flex gap-4 transition-opacity',
           fullscreen && 'opacity-0 hover:opacity-100 focus-within:opacity-100',
         )}
       >

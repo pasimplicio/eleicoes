@@ -3,7 +3,7 @@
 // superfície, um único eixo, grade recessiva, legenda sempre presente, rótulo só no
 // fim de cada linha (com linha-guia quando se aproximam), dica com linha vertical ao
 // passar o mouse/tocar e visão em tabela. Texto nunca usa a cor da série.
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { cn } from '../../lib/format'
 import { fmtDia, NAO_CANDIDATO, nomeCurto, serieColor, type SeriePesquisa } from '../../lib/polls'
 
@@ -26,10 +26,12 @@ interface Linha extends SeriePesquisa {
 function useWidth() {
   const ref = useRef<HTMLDivElement>(null)
   const [w, setW] = useState(640)
-  useEffect(() => {
+  // Mede antes do primeiro desenho, para o gráfico não nascer com a largura padrão.
+  useLayoutEffect(() => {
     const el = ref.current
     if (!el) return
-    const ro = new ResizeObserver(([e]) => setW(Math.max(300, e.contentRect.width)))
+    setW(Math.max(220, el.clientWidth))
+    const ro = new ResizeObserver(([e]) => setW(Math.max(220, e.contentRect.width)))
     ro.observe(el)
     return () => ro.disconnect()
   }, [])
@@ -41,7 +43,8 @@ const pct = (v: number) => `${v.toLocaleString('pt-BR', { maximumFractionDigits:
 export function PollChart({ series, margem, titulo }: Props) {
   const [ref, width] = useWidth()
   // Em telas estreitas, menos espaço para os rótulos finais.
-  const M = width < 480 ? { ...MARGEM, right: 112 } : MARGEM
+  const estreito = width < 420
+  const M = estreito ? { ...MARGEM, right: 14 } : width < 560 ? { ...MARGEM, right: 112 } : MARGEM
   const datas = useMemo(() => [...new Set(series.flatMap((s) => s.pontos.map((p) => p.data)))].sort(), [series])
   const ultimaData = datas.at(-1)
 
@@ -84,6 +87,19 @@ export function PollChart({ series, margem, titulo }: Props) {
   const top = Math.ceil((maxV + 4) / 10) * 10
   const y = (v: number) => ih - (v / top) * ih
   const ticks = Array.from({ length: top / 10 + 1 }, (_, i) => i * 10).filter((v) => top <= 60 || v % 20 === 0)
+
+  // Datas do eixo: a mais recente sempre; as anteriores só com 56px de folga entre si.
+  const rotulosX = new Set<string>()
+  {
+    let ultimoX = Infinity
+    for (let i = datas.length - 1; i >= 0; i--) {
+      const px = x(datas[i])
+      if (ultimoX - px >= 56) {
+        rotulosX.add(datas[i])
+        ultimoX = px
+      }
+    }
+  }
 
   // Rótulos finais sem sobreposição: afastados verticalmente com linha-guia até o ponto.
   const rotulos = useMemo(() => {
@@ -135,9 +151,8 @@ export function PollChart({ series, margem, titulo }: Props) {
                 </text>
               </g>
             ))}
-            {datas.map((d, i) => {
-              const every = Math.ceil(datas.length / Math.max(2, Math.floor(iw / 70)))
-              if (i % every && i !== datas.length - 1) return null
+            {datas.map((d) => {
+              if (!rotulosX.has(d)) return null
               return (
                 <text key={d} x={x(d)} y={ih + 20} textAnchor="middle" className="fill-muted text-[11px]">
                   {fmtDia(d)}
@@ -166,7 +181,7 @@ export function PollChart({ series, margem, titulo }: Props) {
               )
             })}
 
-            {rotulos.map((r) => (
+            {!estreito && rotulos.map((r) => (
               <g key={r.nome}>
                 {Math.abs(r.y - r.y0) > 2 && (
                   <line x1={r.x + 6} y1={r.y0} x2={iw + 10} y2={r.y} className="stroke-muted/60" strokeWidth={1} />

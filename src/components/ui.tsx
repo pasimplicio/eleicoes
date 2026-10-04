@@ -12,7 +12,7 @@ export function Surface({ children, className }: { children: ReactNode; classNam
 /** Título de seção editorial: filete superior e título serifado, sem rótulo acima. */
 export function SectionHeading({ title, action, id }: { title: string; action?: ReactNode; id?: string }) {
   return (
-    <div className="mb-6 flex items-end justify-between gap-4 border-t-2 border-ink pt-3">
+    <div className="mb-6 flex flex-wrap items-end justify-between gap-x-4 gap-y-3 border-t-2 border-ink pt-3">
       <h2 id={id} className="font-serif text-2xl font-semibold tracking-tight sm:text-[1.75rem]">
         {title}
       </h2>

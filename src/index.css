@@ -176,6 +176,14 @@
   cursor: pointer;
 }
 
+/* Menu horizontal do celular: esmaecimento na borda indica que há mais itens ao rolar. */
+.nav-scroll {
+  mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent);
+}
+.nav-scroll::-webkit-scrollbar {
+  display: none;
+}
+
 @keyframes sheet-up {
   from {
     opacity: 0;
