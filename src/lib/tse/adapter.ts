@@ -18,6 +18,8 @@ function totals(r: RawTotals): Totals {
   const turnout = int(r.c)
   return {
     sectionsPct: pct(r.pst),
+    sectionsCounted: int(r.st),
+    sectionsTotal: int(r.s),
     electorate: int(r.e),
     turnout,
     turnoutPct: pct(r.pc),
@@ -125,6 +127,9 @@ export function adaptUnified(raw: RawUnified, photoUrl: (sqcand: string) => stri
   const turnout = int(raw.e?.c)
   return {
     sectionsPct: pct(raw.s?.pst),
+    sectionsCounted: int(raw.s?.st),
+    sectionsTotal: int(raw.s?.ts),
+    electorateCounted: raw.e?.est ? int(raw.e.est) : undefined,
     electorate: int(raw.e?.te),
     turnout,
     turnoutPct: pct(raw.e?.pc),
@@ -169,3 +174,52 @@ export function unifiedNames(raw: RawUnified): Map<string, FixedCandidate> {
   }
   return map
 }
+
+/**
+ * Soma de várias abrangências (ex.: os estados de uma região). Votos, urnas e eleitorado
+ * são somados; os percentuais são recalculados sobre as somas, como o TSE calcula.
+ */
+export function aggregateResults(results: ResultSummary[], scope: string): ResultSummary | undefined {
+  if (!results.length) return undefined
+  const sum = (f: (r: ResultSummary) => number | undefined) => results.reduce((t, r) => t + (f(r) ?? 0), 0)
+  const sectionsCounted = sum((r) => r.sectionsCounted)
+  const sectionsTotal = sum((r) => r.sectionsTotal)
+  const turnout = sum((r) => r.turnout)
+  const abstention = sum((r) => r.abstention)
+  const base = sum((r) => r.electorateCounted ?? r.turnout + r.abstention) || 1
+  const valid = sum((r) => r.valid)
+  const byId = new Map<string, CandidateResult>()
+  for (const r of results) {
+    for (const c of r.candidates) {
+      const cur = byId.get(c.id)
+      byId.set(c.id, cur ? { ...cur, votes: cur.votes + c.votes } : { ...c })
+    }
+  }
+  const first = results[0]
+  return {
+    sectionsPct: sectionsTotal ? (sectionsCounted / sectionsTotal) * 100 : 0,
+    sectionsCounted,
+    sectionsTotal,
+    electorateCounted: base,
+    electorate: sum((r) => r.electorate),
+    turnout,
+    turnoutPct: (turnout / base) * 100,
+    abstention,
+    abstentionPct: (abstention / base) * 100,
+    valid,
+    blank: sum((r) => r.blank),
+    nulls: sum((r) => r.nulls),
+    electionId: first.electionId,
+    officeCode: first.officeCode,
+    turn: Math.max(...results.map((r) => r.turn)),
+    scope,
+    updatedAt: results.map((r) => r.updatedAt).sort((a, b) => sortable(b).localeCompare(sortable(a)))[0],
+    final: results.every((r) => r.final),
+    candidates: [...byId.values()]
+      .map((c) => ({ ...c, pct: valid ? (c.votes / valid) * 100 : 0, elected: false, runoff: false, status: '' }))
+      .sort(byVotes),
+  }
+}
+
+/** "04/10/2026 17:24:02" -> "20261004 17:24:02" */
+const sortable = (s: string) => (s ? `${s.slice(6, 10)}${s.slice(3, 5)}${s.slice(0, 2)}${s.slice(10)}` : '')

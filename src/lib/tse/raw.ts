@@ -155,6 +155,6 @@ export interface RawUnified {
     }[]
   }[]
   s: { ts: string; st: string; pst: string }
-  e: { te: string; c: string; pc: string; a: string; pa: string }
+  e: { te: string; est?: string; c: string; pc: string; a: string; pa: string }
   v: { vv: string; vnom?: string; vl?: string; vb: string; tvn: string }
 }

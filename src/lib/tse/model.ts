@@ -18,6 +18,11 @@ export interface CandidateResult {
 
 export interface Totals {
   sectionsPct: number
+  /** Urnas (seções) apuradas e total de urnas da abrangência. */
+  sectionsCounted?: number
+  sectionsTotal?: number
+  /** Eleitorado das seções já apuradas (base do comparecimento). */
+  electorateCounted?: number
   electorate: number
   turnout: number
   turnoutPct: number

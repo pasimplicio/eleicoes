@@ -187,7 +187,10 @@ function CartaoTotalizacao({
       <div className="flex items-start justify-between">
         <div>
           <p className="text-[20px] font-bold text-[#222]">{fmtPct(pct)} das seções totalizadas</p>
-          <p className="text-[13px] font-bold text-[var(--tse-primary)]">(Horário de Brasília)</p>
+          <p className="text-[13px] font-bold text-[var(--tse-primary)]">
+            {result?.sectionsTotal ? `${fmtInt(result.sectionsCounted ?? 0)} de ${fmtInt(result.sectionsTotal)} urnas apuradas · ` : ''}
+            (Horário de Brasília)
+          </p>
         </div>
         <button
           type="button"

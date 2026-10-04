@@ -9,6 +9,7 @@ import { leaderColor } from '../../lib/colors'
 import { cn, fmtPct, slugify } from '../../lib/format'
 import type { ResultSummary } from '../../lib/tse/model'
 import { useQuery } from '@tanstack/react-query'
+import { aggregateResults } from '../../lib/tse/adapter'
 import { electionId, resultQuery, useResult, useUfResults } from '../../lib/tse/queries'
 import { ChoroplethMap } from '../map/ChoroplethMap'
 import { EmptyState, Segmented, SectionHeading, Skeleton } from '../ui'
@@ -54,7 +55,18 @@ export function NationalExplorer({ cycle, ids, office, turn, header }: Props) {
   const inView = Object.fromEntries(ufsInView.map((u) => [u.sigla, byUf[u.sigla]])) as ByUf
 
   const noData = !national.isFetching && !loading && loaded === 0 && !national.data
-  const headline = isNational ? national.data : undefined
+  // Região selecionada: soma dos estados dela (votos, urnas, eleitorado).
+  const regional = useMemo(
+    () =>
+      region === 'Brasil'
+        ? undefined
+        : aggregateResults(
+            ufsInView.map((u) => byUf[u.sigla]).filter((r): r is ResultSummary => Boolean(r)),
+            region,
+          ),
+    [region, ufsInView, byUf],
+  )
+  const headline = isNational ? (regional ?? national.data) : undefined
 
   // Dia da eleição antes da divulgação (ou arquivos ainda não publicados): mostra os
   // candidatos. As consultas acima continuam ativas e trocam para a apuração sozinhas.
@@ -74,6 +86,7 @@ export function NationalExplorer({ cycle, ids, office, turn, header }: Props) {
           ) : isNational ? (
             headline ? (
               <div className="space-y-6">
+                {regional && <RegionLabel region={region} ufs={ufsInView.length} loaded={Object.values(inView).filter(Boolean).length} />}
                 <SectionsProgress result={headline} />
                 {headline.turn === 2 && headline.candidates.length === 2 ? (
                   <HeadToHead result={headline} />
@@ -86,7 +99,11 @@ export function NationalExplorer({ cycle, ids, office, turn, header }: Props) {
               <ScoreboardSkeleton />
             )
           ) : (
-            <PartyTally byUf={byUf} office={office} />
+            <div className="space-y-6">
+              {regional && <RegionLabel region={region} ufs={ufsInView.length} loaded={Object.values(inView).filter(Boolean).length} />}
+              {regional && <SectionsProgress result={regional} />}
+              <PartyTally byUf={inView} office={office} />
+            </div>
           )}
         </div>
 
@@ -99,7 +116,6 @@ export function NationalExplorer({ cycle, ids, office, turn, header }: Props) {
               options={(['Brasil', ...REGIONS] as RegionFilter[]).map((r) => ({ value: r, label: r }))}
             />
           </div>
-          {isNational && region !== 'Brasil' && <RegionSummary region={region} inView={inView} />}
           <ChoroplethMap
             focus={focus}
             src="/geo/br-uf.json"
@@ -166,6 +182,15 @@ function UfTooltip({ uf, byUf, turn }: { uf: string; byUf: ByUf; turn: Turn }) {
         <span className="text-muted">Sem dados ainda</span>
       )}
     </div>
+  )
+}
+
+function RegionLabel({ region, ufs, loaded }: { region: RegionFilter; ufs: number; loaded: number }) {
+  return (
+    <p className="text-sm text-muted">
+      <strong className="font-semibold text-ink">Região {region}</strong>, soma dos {ufs} estados
+      {loaded < ufs && ` (${loaded} com dados até agora)`}
+    </p>
   )
 }
 
@@ -248,45 +273,6 @@ function PartyTally({ byUf, office }: { byUf: ByUf; office: Office }) {
 const REGIONS: Region[] = ['Norte', 'Nordeste', 'Centro-Oeste', 'Sudeste', 'Sul']
 
 /** Soma dos votos dos estados filtrados (cargo nacional): o placar da região. */
-function RegionSummary({ region, inView }: { region: Region; inView: ByUf }) {
-  const rows = useMemo(() => {
-    const acc = new Map<string, { name: string; party: string; votes: number }>()
-    let total = 0
-    for (const r of Object.values(inView)) {
-      for (const c of r?.candidates ?? []) {
-        const cur = acc.get(c.id) ?? { name: c.name, party: c.party, votes: 0 }
-        cur.votes += c.votes
-        total += c.votes
-        acc.set(c.id, cur)
-      }
-    }
-    return [...acc.values()]
-      .sort((a, b) => b.votes - a.votes)
-      .slice(0, 2)
-      .map((c) => ({ ...c, pct: total ? (c.votes / total) * 100 : 0 }))
-  }, [inView])
-  if (!rows.length) return null
-
-  return (
-    <div className="mb-4 rounded-md border border-line bg-surface px-4 py-3">
-      <p className="text-xs text-muted">Soma dos votos válidos na região {region}</p>
-      <div className="mt-1.5 flex flex-wrap items-baseline gap-x-6 gap-y-1">
-        {rows.map((c, i) => (
-          <span key={c.name} className="inline-flex items-baseline gap-2">
-            <span
-              className="h-2.5 w-2.5 self-center rounded-sm"
-              style={{ background: partyColor(c.party, i) }}
-              aria-hidden
-            />
-            <span className="text-sm">{c.name}</span>
-            <strong className="text-lg font-semibold tabular">{fmtPct(c.pct)}</strong>
-          </span>
-        ))}
-      </div>
-    </div>
-  )
-}
-
 function StateCards({
   ufs,
   byUf,

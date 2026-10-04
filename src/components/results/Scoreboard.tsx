@@ -27,16 +27,30 @@ function Bar({ pct, color, className }: { pct: number; color: string; className?
 }
 
 export function SectionsProgress({ result }: { result: ResultSummary }) {
+  const urnas = Boolean(result.sectionsTotal)
   return (
-    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-sm">
-      <span className="inline-flex items-center gap-2 font-medium">
-        <span
-          className={cn('h-2 w-2 rounded-full', result.final ? 'bg-ok' : 'live-dot bg-live')}
-          aria-hidden
-        />
-        {result.final ? 'Totalização concluída' : `${fmtPct(result.sectionsPct)} das seções totalizadas`}
-      </span>
-      <span className="text-muted tabular">Atualizado em {fmtUpdated(result.updatedAt)}</span>
+    <div className="space-y-2.5">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-sm">
+        <span className="inline-flex items-center gap-2 font-medium">
+          <span
+            className={cn('h-2 w-2 rounded-full', result.final ? 'bg-ok' : 'live-dot bg-live')}
+            aria-hidden
+          />
+          {result.final ? 'Totalização concluída' : `${fmtPct(result.sectionsPct)} das seções totalizadas`}
+        </span>
+        <span className="text-muted tabular">Atualizado em {fmtUpdated(result.updatedAt)}</span>
+      </div>
+      {urnas && (
+        <div>
+          <div className="h-1.5 overflow-hidden rounded-full bg-surface-2" aria-hidden>
+            <div className="h-full rounded-full bg-ink" style={{ width: `${Math.min(100, result.sectionsPct)}%` }} />
+          </div>
+          <p className="mt-1.5 text-sm text-muted tabular">
+            <strong className="font-semibold text-ink">{fmtInt(result.sectionsCounted ?? 0)}</strong> de{' '}
+            {fmtInt(result.sectionsTotal ?? 0)} urnas apuradas
+          </p>
+        </div>
+      )}
     </div>
   )
 }
