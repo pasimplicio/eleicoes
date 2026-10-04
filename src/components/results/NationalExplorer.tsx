@@ -1,7 +1,8 @@
 import { ArrowRight, Clock } from '@phosphor-icons/react'
 import { useMemo, type ReactNode } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import type { Cycle, ElectionIds, Office, Turn } from '../../config/elections'
+import { currentYear, type Cycle, type ElectionIds, type Office, type Turn } from '../../config/elections'
+import { CandidatesExplorer } from '../candidates/CandidatesExplorer'
 import { partyColor } from '../../config/parties'
 import { UF_BY_IBGE, UFS, type Region } from '../../config/ufs'
 import { leaderColor } from '../../lib/colors'
@@ -47,6 +48,12 @@ export function NationalExplorer({ cycle, ids, office, turn, header }: Props) {
 
   const noData = !national.isFetching && !loading && loaded === 0 && !national.data
   const headline = isNational ? national.data : undefined
+
+  // Dia da eleição antes da divulgação (ou arquivos ainda não publicados): mostra os
+  // candidatos. As consultas acima continuam ativas e trocam para a apuração sozinhas.
+  if (noData && cycle.year === currentYear()) {
+    return <CandidatesExplorer cycle={cycle} ids={ids} office={office} header={header} />
+  }
 
   return (
     <div className="space-y-14">
