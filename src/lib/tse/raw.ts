@@ -102,3 +102,59 @@ export interface RawElectionConfig {
     e: { cd: string; t: string; nm: string; tp: string; abr?: { cd: string; cp?: { cd: string }[] }[] }[]
   }[]
 }
+
+/** Candidato no arquivo unificado (-u), formato de 2026. */
+export interface RawUnifiedCandidate {
+  n: string
+  sqcand: string
+  nm: string
+  nmu: string
+  dt: string
+  dvt: string
+  seq: string
+  e: string // eleito (s/n)
+  st: string // situação ("Eleito", "2º turno", "Eleito por QP"...)
+  vap: string
+  pvap: string
+  vs?: { tp: string; nmu: string; nm: string }[]
+}
+
+/**
+ * Arquivo unificado de 2026: dados/<uf>/<abr>-cNNNN-eNNNNNN-u.json. Substitui o
+ * simplificado (-r), o de votação (-v) e o fixo (-f): candidatos, agremiações e totais.
+ */
+export interface RawUnified {
+  ele: string
+  t: string
+  tpabr: string
+  cdabr: string
+  dg: string
+  hg: string
+  dt: string
+  ht: string
+  tf: string
+  carg: {
+    cd: string
+    nv: string
+    fed?: { n: string; sg: string; nm: string; com: string; npar: string[] }[]
+    agr: {
+      n: string
+      nm: string
+      tp: string // i: partido isolado, c: coligação, f: federação
+      com: string
+      vag?: string
+      par: {
+        n: string
+        sg: string
+        nm: string
+        nfed: string
+        tvtn?: string // votos nominais
+        tvtl?: string // votos de legenda
+        cand: RawUnifiedCandidate[]
+      }[]
+    }[]
+  }[]
+  s: { ts: string; st: string; pst: string }
+  e: { te: string; c: string; pc: string; a: string; pa: string }
+  v: { vv: string; vnom?: string; vl?: string; vb: string; tvn: string }
+}

@@ -1,6 +1,6 @@
 import { titleCase } from '../format'
 import type { CandidateResult, ResultSummary, Totals } from './model'
-import type { RawFixed, RawSimplified, RawTotals, RawVotes } from './raw'
+import type { RawFixed, RawSimplified, RawTotals, RawUnified, RawVotes } from './raw'
 
 const int = (v?: string) => (v ? Number.parseInt(v, 10) || 0 : 0)
 const pct = (v?: string) => (v ? Number.parseFloat(v.replace(',', '.')) || 0 : 0)
@@ -114,4 +114,58 @@ export function adaptVotes(
       })
       .sort(byVotes),
   }
+}
+
+// ------------------------------------------------------------ formato unificado (2026)
+
+const flatCandidates = (raw: RawUnified) =>
+  (raw.carg[0]?.agr ?? []).flatMap((a) => a.par.flatMap((p) => p.cand.map((c) => ({ c, par: p, agr: a }))))
+
+export function adaptUnified(raw: RawUnified, photoUrl: (sqcand: string) => string): ResultSummary {
+  const turnout = int(raw.e?.c)
+  return {
+    sectionsPct: pct(raw.s?.pst),
+    electorate: int(raw.e?.te),
+    turnout,
+    turnoutPct: pct(raw.e?.pc),
+    abstention: int(raw.e?.a),
+    abstentionPct: pct(raw.e?.pa),
+    valid: int(raw.v?.vv),
+    blank: int(raw.v?.vb),
+    nulls: int(raw.v?.tvn),
+    electionId: raw.ele,
+    officeCode: raw.carg[0]?.cd ?? '',
+    turn: int(raw.t),
+    scope: raw.cdabr,
+    updatedAt: `${raw.dt || raw.dg} ${raw.ht || raw.hg}`,
+    final: raw.tf?.toLowerCase() === 's',
+    candidates: flatCandidates(raw)
+      .map<CandidateResult>(({ c, par, agr }) => {
+        const vice = c.vs?.find((v) => v.tp === 'v') ?? c.vs?.[0]
+        const st = status(c.st ?? '')
+        return {
+          id: c.sqcand,
+          number: c.n,
+          name: titleCase(c.nmu || c.nm),
+          vice: vice ? titleCase(vice.nmu || vice.nm) : undefined,
+          party: par.sg,
+          coalition: agr.tp === 'i' ? undefined : agr.com,
+          votes: int(c.vap),
+          pct: pct(c.pvap),
+          photo: photoUrl(c.sqcand),
+          ...st,
+          elected: st.elected || c.e?.toLowerCase() === 's',
+        }
+      })
+      .sort(byVotes),
+  }
+}
+
+/** Nomes e partidos por número, a partir do arquivo unificado. */
+export function unifiedNames(raw: RawUnified): Map<string, FixedCandidate> {
+  const map = new Map<string, FixedCandidate>()
+  for (const { c, par } of flatCandidates(raw)) {
+    map.set(c.n, { id: c.sqcand, name: titleCase(c.nmu || c.nm), party: par.sg })
+  }
+  return map
 }

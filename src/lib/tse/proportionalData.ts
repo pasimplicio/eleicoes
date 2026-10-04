@@ -13,7 +13,8 @@ import { byStatusThenName } from '../candidates'
 import { livePolling } from '../live'
 import { decodeEntities, titleCase } from '../format'
 import { allocate, thirdPhaseRule, type CandidateOutcome, type ThirdPhaseRule } from '../proportional'
-import { photoPath, simplifiedPath, BASE } from './paths'
+import { photoPath, simplifiedPath, unifiedPath, usesUnified, BASE } from './paths'
+import type { RawUnified } from './raw'
 import { electionId, getJson, HttpError } from './queries'
 
 /** Deputado estadual no DF é o cargo 8 (distrital). */
@@ -151,6 +152,66 @@ async function optional<T>(url: string): Promise<T | null> {
   }
 }
 
+/**
+ * O arquivo unificado de 2026 (-u) reúne o que antes vinha em -v, -f e -r. Converte para
+ * esses três formatos, e o cálculo abaixo segue igual para todos os ciclos.
+ */
+function fromUnified(u: RawUnified): { votes: RawPropVotes; fixed: RawPropFixed; simplified: RawPropSimplified } {
+  const carg = u.carg[0]
+  const sum = (xs: (string | undefined)[]) => String(xs.reduce((t, x) => t + int(x), 0))
+  const cands = carg.agr.flatMap((a) => a.par.flatMap((p) => p.cand))
+  return {
+    votes: {
+      nadf: '',
+      dg: u.dt || u.dg,
+      hg: u.ht || u.hg,
+      abr: [
+        {
+          tpabr: 'UF',
+          tf: u.tf,
+          pst: u.s?.pst ?? '0',
+          e: u.e?.te ?? '0',
+          c: u.e?.c ?? '0',
+          pc: u.e?.pc ?? '0',
+          a: u.e?.a ?? '0',
+          pa: u.e?.pa ?? '0',
+          vv: u.v?.vv ?? '0',
+          vnom: u.v?.vnom ?? '0',
+          vl: u.v?.vl ?? '0',
+          vb: u.v?.vb ?? '0',
+          tvn: u.v?.tvn ?? '0',
+          agr: carg.agr.map((a) => ({
+            n: a.n,
+            tvtn: sum(a.par.map((p) => p.tvtn)),
+            tvtl: sum(a.par.map((p) => p.tvtl)),
+            vag: a.vag ?? '0',
+          })),
+          cand: cands.map((c) => ({ n: c.n, vap: c.vap })),
+        },
+      ],
+    },
+    fixed: {
+      carg: {
+        nv: carg.nv,
+        fed: carg.fed,
+        agr: carg.agr.map((a) => ({
+          n: a.n,
+          nm: a.nm,
+          tp: a.tp.toUpperCase(),
+          com: a.com,
+          par: a.par.map((p) => ({
+            n: p.n,
+            sg: p.sg,
+            nfed: p.nfed,
+            cand: p.cand.map((c) => ({ n: c.n, sqcand: c.sqcand, nm: c.nm, nmu: c.nmu, dt: c.dt, dvt: c.dvt })),
+          })),
+        })),
+      },
+    },
+    simplified: { tf: u.tf, cand: cands.map((c) => ({ n: c.n, st: c.st })) },
+  }
+}
+
 export function useProportional(cycle: Cycle, ids: ElectionIds | undefined, office: Office, uf: string) {
   const ele = electionId(ids, office, 1)
   const ufl = uf.toLowerCase()
@@ -163,12 +224,21 @@ export function useProportional(cycle: Cycle, ids: ElectionIds | undefined, offi
     queryFn: async (): Promise<ProportionalData | null> => {
       const c4 = code.padStart(4, '0')
       const e6 = ele!.padStart(6, '0')
-      const votes = await optional<RawPropVotes>(`${BASE}/${cycle.tse}/${ele}/dados/${ufl}/${ufl}-c${c4}-e${e6}-v.json`)
-      if (!votes) return null
-      const [fixed, simplified] = await Promise.all([
-        getJson<RawPropFixed>(`${BASE}/${cycle.tse}/${ele}/dados/${ufl}/${votes.nadf}.json`),
-        optional<RawPropSimplified>(simplifiedPath(cycle.tse, ele!, code, ufl)),
-      ])
+      let votes: RawPropVotes | null
+      let fixed: RawPropFixed
+      let simplified: RawPropSimplified | null
+      if (usesUnified(cycle.year)) {
+        const u = await optional<RawUnified>(unifiedPath(cycle.tse, ele!, code, ufl))
+        if (!u) return null
+        ;({ votes, fixed, simplified } = fromUnified(u))
+      } else {
+        votes = await optional<RawPropVotes>(`${BASE}/${cycle.tse}/${ele}/dados/${ufl}/${ufl}-c${c4}-e${e6}-v.json`)
+        if (!votes) return null
+        ;[fixed, simplified] = await Promise.all([
+          getJson<RawPropFixed>(`${BASE}/${cycle.tse}/${ele}/dados/${ufl}/${votes.nadf}.json`),
+          optional<RawPropSimplified>(simplifiedPath(cycle.tse, ele!, code, ufl)),
+        ])
+      }
       const abr = votes.abr.find((a) => a.tpabr === 'UF') ?? votes.abr[0]
       const seats = int(fixed.carg.nv)
 

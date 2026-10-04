@@ -23,3 +23,11 @@ export function photoPath(tse: string, ele: string, abr: string, sqcand: string)
 }
 
 export const ELECTION_CONFIG_PATH = `${BASE}/comum/config/ele-c.json`
+
+/** Arquivo unificado (2026 em diante). abr: 'br', 'zz', 'sp' ou 'sp71072'. */
+export function unifiedPath(tse: string, ele: string, office: string, abr: string) {
+  return `${BASE}/${tse}/${ele}/dados/${abr.slice(0, 2)}/${abr}-c${pad(office, 4)}-e${pad(ele, 6)}-u.json`
+}
+
+/** O TSE trocou os arquivos -r/-v/-f pelo unificado -u a partir das eleições de 2026. */
+export const usesUnified = (year: number) => year >= 2026

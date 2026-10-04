@@ -13,8 +13,20 @@ interface RawVotes {
   abr: { tpabr: string; cdabr: string; pst: string; tf: string; cand: { n: string; vap: string; pvap: string }[] }[]
 }
 
+/** Formato unificado de 2026 (-u): candidatos, totais e situação num só arquivo. */
+interface RawUnified {
+  dt: string
+  ht: string
+  dg: string
+  hg: string
+  tf: string
+  s: { pst: string }
+  carg: { agr: { par: { sg: string; cand: { n: string; nm: string; nmu: string; vap: string; pvap: string }[] }[] }[] }[]
+}
+
 export interface MunicipalSummary {
   nadf: string
+  names?: Record<string, [string, string]>
   updatedAt: string
   final: boolean
   /** código TSE -> [% seções, [[número, votos, %], ... top 3]] */
@@ -51,6 +63,8 @@ export async function buildSummary(
   let final = true
   const cities: MunicipalSummary['cities'] = {}
 
+  if (Number(ciclo.slice(3)) >= 2026) return buildUnified(params, municipalities)
+
   const results = await mapLimit(municipalities, CONCURRENCY, async (mun) => {
     const res = await fetch(`${ORIGIN}/${ciclo}/${ele}/dados/${uf}/${uf}${mun}-c${c}-e${e}-v.json`)
     if (!res.ok) return { mun, status: res.status }
@@ -74,6 +88,40 @@ export async function buildSummary(
     cities[r.mun] = [num(abr.pst), top]
   }
   return { nadf, updatedAt, final, cities }
+}
+
+async function buildUnified(
+  params: { ciclo: string; ele: string; cargo: string; uf: string },
+  municipalities: string[],
+): Promise<MunicipalSummary | null> {
+  const { ciclo, ele, cargo, uf } = params
+  const c = cargo.padStart(4, '0')
+  const e = ele.padStart(6, '0')
+  const results = await mapLimit(municipalities, CONCURRENCY, async (mun) => {
+    const res = await fetch(`${ORIGIN}/${ciclo}/${ele}/dados/${uf}/${uf}${mun}-c${c}-e${e}-u.json`)
+    if (!res.ok) return { mun, status: res.status }
+    return { mun, status: 200, data: (await res.json()) as RawUnified }
+  })
+  if (results.every((r) => r.status === 404)) return null
+
+  let updatedAt = ''
+  let final = true
+  const names: Record<string, [string, string]> = {}
+  const cities: MunicipalSummary['cities'] = {}
+  for (const r of results) {
+    if (!r.data) continue
+    const stamp = `${r.data.dt || r.data.dg} ${r.data.ht || r.data.hg}`
+    if (sortable(stamp) > sortable(updatedAt)) updatedAt = stamp
+    if (r.data.tf?.toLowerCase() !== 's') final = false
+    const cands = (r.data.carg[0]?.agr ?? []).flatMap((a) => a.par.flatMap((p) => p.cand.map((x) => ({ x, sg: p.sg }))))
+    for (const { x, sg } of cands) names[x.n] ??= [x.nmu || x.nm, sg]
+    const top = cands
+      .map(({ x }) => [x.n, Number(x.vap) || 0, num(x.pvap)] as [string, number, number])
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+    cities[r.mun] = [num(r.data.s?.pst ?? '0'), top]
+  }
+  return { nadf: '', names, updatedAt, final, cities }
 }
 
 const VALID = { ciclo: /^ele\d{4}$/, ele: /^\d{1,6}$/, cargo: /^\d{1,4}$/, uf: /^[a-z]{2}$/ }

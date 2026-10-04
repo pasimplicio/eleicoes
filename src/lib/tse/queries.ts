@@ -4,11 +4,11 @@ import { UFS } from '../../config/ufs'
 import { titleCase } from '../format'
 import { livePolling } from '../live'
 import { currentYear } from '../../config/elections'
-import { adaptFixed, adaptSimplified, adaptVotes } from './adapter'
+import { adaptFixed, adaptSimplified, adaptUnified, adaptVotes } from './adapter'
 import { knownIds, parseElectionConfig } from './discovery'
 import type { ResultSummary } from './model'
-import { ELECTION_CONFIG_PATH, fixedPath, photoPath, simplifiedPath, votesPath } from './paths'
-import type { RawElectionConfig, RawFixed, RawSimplified, RawVotes } from './raw'
+import { ELECTION_CONFIG_PATH, fixedPath, photoPath, simplifiedPath, unifiedPath, usesUnified, votesPath } from './paths'
+import type { RawElectionConfig, RawFixed, RawSimplified, RawUnified, RawVotes } from './raw'
 
 export class HttpError extends Error {
   status: number
@@ -65,6 +65,8 @@ function photoAbr(office: Office, abr: string) {
 }
 
 async function fetchSimplified(cycle: Cycle, ele: string, office: Office, abr: string) {
+  const photo = (sq: string) => photoPath(cycle.tse, ele, photoAbr(office, abr), sq)
+  if (usesUnified(cycle.year)) return adaptUnified(await getJson<RawUnified>(unifiedPath(cycle.tse, ele, office.code, abr)), photo)
   const raw = await getJson<RawSimplified>(simplifiedPath(cycle.tse, ele, office.code, abr))
   return adaptSimplified(raw, (sq) => photoPath(cycle.tse, ele, photoAbr(office, abr), sq))
 }
@@ -138,6 +140,7 @@ export function useCityResult(target: Target, uf: string, mun: string | undefine
       for (const ele of candidates) {
         if (!ele) continue
         try {
+          if (usesUnified(cycle.year)) return await fetchSimplified(cycle, ele, office, `${ufl}${mun}`)
           const votes = await getJson<RawVotes>(votesPath(cycle.tse, ele, office.code, ufl, mun))
           const fixed = await getJson<RawFixed>(fixedPath(cycle.tse, ele, ufl, votes.nadf))
           return (
@@ -191,6 +194,8 @@ export interface MunicipalSummary {
   updatedAt: string
   final: boolean
   cities: Record<string, [number, [string, number, number][]]>
+  /** Formato unificado (2026): número -> [nome, partido]; dispensa o arquivo fixo. */
+  names?: Record<string, [string, string]>
 }
 
 export interface CityLeader {
@@ -214,7 +219,9 @@ export function useMunicipalLeaders(target: Target, uf: string) {
         try {
           const qs = new URLSearchParams({ ciclo: cycle.tse, ele, cargo: office.code, uf: ufl })
           const summary = await getJson<MunicipalSummary>(`/api/municipios?${qs}`)
-          const names = adaptFixed(await getJson<RawFixed>(fixedPath(cycle.tse, ele, ufl, summary.nadf)))
+          const names = summary.names
+            ? new Map(Object.entries(summary.names).map(([n, [name, party]]) => [n, { id: n, name: titleCase(name), party }]))
+            : adaptFixed(await getJson<RawFixed>(fixedPath(cycle.tse, ele, ufl, summary.nadf)))
           const leaders: Record<string, CityLeader> = {}
           for (const [mun, [sectionsPct, top]] of Object.entries(summary.cities)) {
             leaders[mun] = {
