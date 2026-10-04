@@ -64,7 +64,8 @@ export function Telao() {
   const modulos = useMemo(() => roteiro(config), [config])
   const cycle = getCycle(config.ano) ?? getCycle(currentYear())!
   const { ids } = useElectionIds(cycle.year)
-  const turn: Turn = config.turno === 'auto' ? defaultTurn(cycle, Boolean(ids?.[2])) : config.turno
+  // Turno fixo em 2 só vale quando o TSE já publicou a eleição de 2º turno.
+  const turn: Turn = config.turno === 'auto' || (config.turno === 2 && !ids?.[2]) ? defaultTurn(cycle, Boolean(ids?.[2])) : config.turno
   const scale = useStageScale()
   const [fullscreen, toggleFullscreen] = useFullscreen()
   const navigate = useNavigate()

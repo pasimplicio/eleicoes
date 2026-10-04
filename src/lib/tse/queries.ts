@@ -43,7 +43,15 @@ export function useElectionIds(year: number): { ids?: ElectionIds; loading: bool
   })
   const found = config.data ? parseElectionConfig(config.data, year) : undefined
   if (!known) return { ids: found, loading: config.isLoading }
-  return { ids: found ? { 1: { ...known[1], ...found[1] }, 2: { ...known[2], ...found[2] } } : known, loading: false }
+  if (!found) return { ids: known, loading: false }
+  // Junta por turno, mas só cria o turno que tem algum código: um 2º turno vazio
+  // habilitaria a aba antes de o TSE publicar a eleição de 2º turno.
+  const ids: ElectionIds = {}
+  for (const t of [1, 2] as Turn[]) {
+    const merged = { ...known[t], ...found[t] }
+    if (Object.keys(merged).length) ids[t] = merged
+  }
+  return { ids, loading: false }
 }
 
 export function electionId(ids: ElectionIds | undefined, office: Office, turn: Turn): string | undefined {

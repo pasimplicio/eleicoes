@@ -20,7 +20,7 @@ export function OfficePage() {
   if (!cycle || !office) return <NotFound />
 
   const q = Number(search.get('turno'))
-  const turn: Turn = !office.hasRunoff ? 1 : q === 1 || q === 2 ? q : defaultTurn(cycle, Boolean(ids?.[2]))
+  const turn: Turn = !office.hasRunoff ? 1 : q === 2 && ids?.[2] ? 2 : q === 1 ? 1 : defaultTurn(cycle, Boolean(ids?.[2]))
   const years = [...new Set([...Object.keys(KNOWN_IDS).map(Number), cycle.year])]
     .filter((y) => getCycle(y)?.kind === cycle.kind)
     .sort((a, b) => b - a)
@@ -53,7 +53,7 @@ export function OfficePage() {
             onChange={(t) => setSearch({ turno: String(t) }, { replace: true })}
             options={[
               { value: 1, label: '1º turno' },
-              { value: 2, label: '2º turno', disabled: !ids?.[2], hint: 'Ainda não houve 2º turno' },
+              { value: 2, label: '2º turno', disabled: !ids?.[2], hint: 'O 2º turno, se houver, será em 25 de outubro' },
             ]}
           />
         )}

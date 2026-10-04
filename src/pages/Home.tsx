@@ -92,7 +92,7 @@ export function Home() {
             onChange={setTurn}
             options={[
               { value: 1, label: '1º turno' },
-              { value: 2, label: '2º turno', disabled: !ids?.[2], hint: 'Ainda não houve 2º turno' },
+              { value: 2, label: '2º turno', disabled: !ids?.[2], hint: 'O 2º turno, se houver, será em 25 de outubro' },
             ]}
           />
         )}
