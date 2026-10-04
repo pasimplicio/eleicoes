@@ -94,7 +94,8 @@ export interface RawFixed {
 
 /** Config pública de eleições do ciclo corrente: comum/config/ele-c.json */
 export interface RawElectionConfig {
-  c: string
+  /** Formato antigo (até 2024): pasta do ciclo. O formato de 2026 lista todas as eleições. */
+  c?: string
   pl: {
     cd: string
     dt: string

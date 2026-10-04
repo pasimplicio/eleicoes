@@ -23,11 +23,14 @@ function levelFromOffices(e: ConfigElection): Level | undefined {
  * Considera apenas eleições ordinárias (ignora consultas populares e suplementares).
  */
 export function parseElectionConfig(raw: RawElectionConfig, year: number): ElectionIds | undefined {
-  if (raw.c !== `ele${year}`) return undefined
+  // Formato antigo: um ciclo por arquivo, identificado em "c".
+  if (raw.c && raw.c !== `ele${year}`) return undefined
   const ids: ElectionIds = {}
   for (const pleito of raw.pl) {
+    // Formato de 2026: o arquivo lista eleições de vários anos; vale a data do pleito.
+    if (!raw.c && !pleito.dt?.endsWith(String(year))) continue
     for (const e of pleito.e) {
-      if (e.tp === '7' || /consulta|suplementar|plebiscito|referendo/i.test(e.nm)) continue
+      if (e.tp === '4' || e.tp === '7' || /consulta|suplementar|plebiscito|referendo/i.test(e.nm)) continue
       const turn = Number(e.t) as Turn
       const level = levelFromOffices(e) ?? LEVEL_PATTERNS.find(([, re]) => re.test(e.nm))?.[0]
       if (!level || (turn !== 1 && turn !== 2)) continue

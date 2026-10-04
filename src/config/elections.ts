@@ -51,6 +51,8 @@ const MUNICIPAL_OFFICES: Office[] = [
 export const KNOWN_IDS: Record<number, ElectionIds> = {
   2022: { 1: { federal: '544', estadual: '546' }, 2: { federal: '545', estadual: '547' } },
   2024: { 1: { municipal: '619' }, 2: { municipal: '620' } },
+  // Publicados pelo TSE em 02/10/2026; o 2º turno é descoberto na config quando sair.
+  2026: { 1: { federal: '6257', estadual: '6259' } },
 }
 
 function sundayOfOctober(year: number, which: 'first' | 'last'): string {

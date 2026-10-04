@@ -32,16 +32,18 @@ const retry = (count: number, err: unknown) => !notFound(err) && count < 2
 
 export function useElectionIds(year: number): { ids?: ElectionIds; loading: boolean } {
   const known = knownIds(year)
+  const corrente = year === currentYear()
+  // Ciclo corrente: consulta a config mesmo com códigos conhecidos (o 2º turno sai depois).
   const config = useQuery({
     queryKey: ['tse-config'],
     queryFn: () => getJson<RawElectionConfig>(ELECTION_CONFIG_PATH),
-    enabled: !known,
+    enabled: !known || corrente,
     staleTime: 60_000,
-    // Os códigos do ciclo corrente aparecem na config do TSE perto da eleição.
-    refetchInterval: known ? false : year === currentYear() ? 2 * 60_000 : 10 * 60_000,
+    refetchInterval: corrente ? 2 * 60_000 : known ? false : 10 * 60_000,
   })
-  if (known) return { ids: known, loading: false }
-  return { ids: config.data ? parseElectionConfig(config.data, year) : undefined, loading: config.isLoading }
+  const found = config.data ? parseElectionConfig(config.data, year) : undefined
+  if (!known) return { ids: found, loading: config.isLoading }
+  return { ids: found ? { 1: { ...known[1], ...found[1] }, 2: { ...known[2], ...found[2] } } : known, loading: false }
 }
 
 export function electionId(ids: ElectionIds | undefined, office: Office, turn: Turn): string | undefined {
