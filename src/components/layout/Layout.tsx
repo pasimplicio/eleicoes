@@ -5,6 +5,7 @@ import { cn, fmtDateLong } from '../../lib/format'
 import { resultsStart, useFeaturedCycle } from '../../lib/phase'
 import { CountdownInline } from '../Countdown'
 import { InstallApp } from '../InstallApp'
+import { MobileMenu } from './MobileMenu'
 import { Container, LiveBadge } from '../ui'
 
 function useTheme() {
@@ -114,30 +115,9 @@ export function Layout() {
           >
             {dark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
           </button>
+          <MobileMenu items={nav} />
           </div>
         </Container>
-        <nav
-          className="nav-scroll flex gap-1 overflow-x-auto border-t border-line px-3 [scrollbar-width:none] lg:hidden"
-          aria-label="Principal (celular)"
-        >
-          {nav.map((n) => (
-            <NavLink
-              key={n.to}
-              to={n.to}
-              end={n.end}
-              className={({ isActive }) =>
-                cn(
-                  'relative flex h-11 shrink-0 items-center px-3 text-sm font-medium whitespace-nowrap',
-                  isActive
-                    ? 'text-ink after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:bg-ink'
-                    : 'text-muted',
-                )
-              }
-            >
-              {n.label}
-            </NavLink>
-          ))}
-        </nav>
       </header>
 
       <main id="conteudo" className="flex-1">

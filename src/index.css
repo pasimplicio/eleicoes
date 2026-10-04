@@ -176,12 +176,22 @@
   cursor: pointer;
 }
 
-/* Menu horizontal do celular: esmaecimento na borda indica que há mais itens ao rolar. */
-.nav-scroll {
-  mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent);
+/* Menu lateral do celular: desliza da direita. */
+@keyframes drawer-in {
+  from {
+    transform: translateX(100%);
+  }
 }
-.nav-scroll::-webkit-scrollbar {
-  display: none;
+.mobile-menu[open] {
+  animation: drawer-in 280ms var(--ease-out-expo);
+}
+.mobile-menu::backdrop {
+  animation: fade-backdrop 280ms ease;
+}
+@keyframes fade-backdrop {
+  from {
+    opacity: 0;
+  }
 }
 
 @keyframes sheet-up {
