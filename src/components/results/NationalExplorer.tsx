@@ -8,7 +8,8 @@ import { UF_BY_IBGE, UFS, type Region } from '../../config/ufs'
 import { leaderColor } from '../../lib/colors'
 import { cn, fmtPct, slugify } from '../../lib/format'
 import type { ResultSummary } from '../../lib/tse/model'
-import { useResult, useUfResults } from '../../lib/tse/queries'
+import { useQuery } from '@tanstack/react-query'
+import { electionId, resultQuery, useResult, useUfResults } from '../../lib/tse/queries'
 import { ChoroplethMap } from '../map/ChoroplethMap'
 import { EmptyState, Segmented, SectionHeading, Skeleton } from '../ui'
 import { CandidatePhoto, PartyChip } from './Candidate'
@@ -32,6 +33,12 @@ export function NationalExplorer({ cycle, ids, office, turn, header }: Props) {
   const national = useResult(target, 'br')
   const { byUf, loaded, loading } = useUfResults(target)
   const isNational = office.scope === 'br'
+  // Exterior (abrangência "zz" do TSE): só há votos para presidente. Aparece quando o
+  // TSE publicar o arquivo oficial; até lá a consulta devolve null e nada é exibido.
+  const exterior = useQuery({
+    ...resultQuery(target, 'zz'),
+    enabled: isNational && Boolean(electionId(ids, office, 1)),
+  })
   const stateHref = (sigla: string) => `/${cycle.year}/${office.slug}/${sigla.toLowerCase()}?turno=${turn}`
 
   const [search, setSearch] = useSearchParams()
@@ -129,6 +136,7 @@ export function NationalExplorer({ cycle, ids, office, turn, header }: Props) {
           }
         />
         <StateCards ufs={ufsInView} byUf={byUf} href={stateHref} showStatus={office.scope === 'uf'} turn={turn} />
+        {region === 'Brasil' && exterior.data && <ExteriorCard result={exterior.data} />}
       </section>
     </div>
   )
@@ -367,6 +375,38 @@ function StateCards({
         )
       })}
     </ul>
+  )
+}
+
+/** Votos de brasileiros no exterior, como publicados pelo TSE (sem mapa nem municípios). */
+function ExteriorCard({ result }: { result: ResultSummary }) {
+  const top = result.candidates.slice(0, 3)
+  return (
+    <div
+      className="mt-6 rounded-lg border border-line bg-surface p-4 sm:p-5"
+      style={{ borderTop: `3px solid ${top[0] ? partyColor(top[0].party) : 'var(--color-line)'}` }}
+    >
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <h3 className="font-semibold">Exterior</h3>
+        <span className="text-xs text-muted tabular">
+          {fmtPct(result.sectionsPct)} das seções apuradas
+        </span>
+      </div>
+      <ul className="mt-4 grid gap-3 sm:grid-cols-3">
+        {top.map((c, j) => (
+          <li key={c.id} className="grid grid-cols-[auto_1fr_auto] items-center gap-x-3">
+            <CandidatePhoto src={c.photo} name={c.name} color={partyColor(c.party, j)} size={j === 0 ? 44 : 36} />
+            <div className="min-w-0">
+              <p className={cn('truncate text-sm', j === 0 && 'font-semibold')}>{c.name}</p>
+              <PartyChip party={c.party} className="mt-1" />
+            </div>
+            <span className={cn('tabular', j === 0 ? 'text-lg font-semibold' : 'text-sm text-ink-2')}>
+              {fmtPct(c.pct)}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
   )
 }
 
