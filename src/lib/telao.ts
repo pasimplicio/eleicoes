@@ -25,7 +25,7 @@ const KEY = 'telao.config'
 export const defaultTelaoConfig = (): TelaoConfig => ({
   ano: currentYear(),
   turno: 'auto',
-  segundos: 15,
+  segundos: 10,
   mostrarAcompanhamentoGeral: true,
   abrangencias: [{ cargo: 'presidente', uf: 'BR' }],
 })

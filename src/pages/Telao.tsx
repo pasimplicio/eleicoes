@@ -2,7 +2,7 @@
 // escala para a tela, telas em rodízio (acompanhamento geral e resultado por cargo e
 // localidade), barra de totalização amarelo-azul e cartões com anel de votos.
 import { ArrowsClockwise, ArrowsIn, ArrowsOut, GearSix, MapPin, SignOut } from '@phosphor-icons/react'
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { ChoroplethMap } from '../components/map/ChoroplethMap'
 import { findOffice, getCycle, todayBrasilia, type Cycle, type ElectionIds, type Office, type Turn, currentYear, isAvailableYear } from '../config/elections'
@@ -76,11 +76,10 @@ export function Telao() {
     navigate('/')
   }
 
-  useEffect(() => {
-    if (modulos.length < 2) return
-    const id = setInterval(() => setI((n) => (n + 1) % modulos.length), Math.max(5, config.segundos) * 1000)
-    return () => clearInterval(id)
-  }, [modulos.length, config.segundos])
+  // O fim da animação da barra de progresso é o que troca a tela: barra e rodízio
+  // nunca saem de sincronia.
+  const rodizio = modulos.length > 1
+  const proxima = () => setI((n) => (n + 1) % modulos.length)
 
   const modulo = modulos[i % modulos.length]
 
@@ -94,6 +93,20 @@ export function Telao() {
           <AcompanhamentoGeral key={`g${i}`} cycle={cycle} ids={ids} turn={turn} cargo={modulo.cargo} />
         ) : (
           <Abrangencia key={`a${i}`} cycle={cycle} ids={ids} turn={turn} modulo={modulo} />
+        )}
+        {rodizio && (
+          <div
+            className="absolute inset-x-0 top-0 z-10 h-[6px] bg-[var(--tse-primary)]/15"
+            role="progressbar"
+            aria-label={`Tela ${(i % modulos.length) + 1} de ${modulos.length}`}
+          >
+            <div
+              key={i}
+              className="telao-progresso h-full bg-[#fdb035]"
+              style={{ '--dur': `${Math.max(5, config.segundos)}s` } as CSSProperties}
+              onAnimationEnd={proxima}
+            />
+          </div>
         )}
       </main>
 

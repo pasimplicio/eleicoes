@@ -82,7 +82,7 @@ export function TelaoConfig() {
               max={300}
               className={field}
               value={c.segundos}
-              onChange={(e) => set({ segundos: Math.max(5, Number(e.target.value) || 15) })}
+              onChange={(e) => set({ segundos: Math.max(5, Number(e.target.value) || 10) })}
             />
           </div>
           <label className="flex cursor-pointer items-center gap-3 sm:col-span-2">
