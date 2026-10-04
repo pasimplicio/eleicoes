@@ -49,7 +49,6 @@ const MUNICIPAL_OFFICES: Office[] = [
 
 /** Códigos de eleição já publicados pelo TSE. */
 export const KNOWN_IDS: Record<number, ElectionIds> = {
-  2022: { 1: { federal: '544', estadual: '546' }, 2: { federal: '545', estadual: '547' } },
   2024: { 1: { municipal: '619' }, 2: { municipal: '620' } },
   // Publicados pelo TSE em 02/10/2026; o 2º turno é descoberto na config quando sair.
   2026: { 1: { federal: '6257', estadual: '6259' } },
@@ -94,6 +93,14 @@ export function todayBrasilia(now = appNow()): string {
 export function currentYear(now = appNow()): number {
   const year = Number(todayBrasilia(now).slice(0, 4))
   return year % 2 === 0 ? year : year + 1
+}
+
+/**
+ * Anos com resultados disponíveis no portal: o ciclo corrente e os de KNOWN_IDS.
+ * 2022 saiu porque o TSE retirou esses arquivos do servidor de divulgação em 2026.
+ */
+export function isAvailableYear(year: number): boolean {
+  return year === currentYear() || Boolean(KNOWN_IDS[year])
 }
 
 /** Último ciclo do mesmo tipo (referência enquanto o atual não tem resultados). */

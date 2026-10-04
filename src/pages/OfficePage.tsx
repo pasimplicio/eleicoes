@@ -1,9 +1,9 @@
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { CandidatesExplorer } from '../components/candidates/CandidatesExplorer'
 import { ProportionalExplorer } from '../components/proportional/ProportionalExplorer'
 import { NationalExplorer } from '../components/results/NationalExplorer'
 import { Container, Segmented } from '../components/ui'
-import { findOffice, getCycle, KNOWN_IDS, todayBrasilia, type Turn } from '../config/elections'
+import { currentYear, findOffice, getCycle, isAvailableYear, KNOWN_IDS, todayBrasilia, type Turn } from '../config/elections'
 import { defaultTurn } from '../lib/phase'
 import { useElectionIds } from '../lib/tse/queries'
 import { NotFound } from './NotFound'
@@ -16,6 +16,7 @@ export function OfficePage() {
   const office = cycle && findOffice(cycle, params.cargo)
   const { ids } = useElectionIds(cycle?.year ?? 0)
 
+  if (cycle && !isAvailableYear(cycle.year)) return <Navigate to={`/${currentYear()}/${params.cargo}`} replace />
   if (!cycle || !office) return <NotFound />
 
   const q = Number(search.get('turno'))

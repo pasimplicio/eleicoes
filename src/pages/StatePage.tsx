@@ -1,10 +1,10 @@
 import { CaretRight, MagnifyingGlass, MapPin, X } from '@phosphor-icons/react'
 import { useId, useMemo, useState } from 'react'
-import { Link, useParams, useSearchParams } from 'react-router-dom'
+import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom'
 import { ChoroplethMap } from '../components/map/ChoroplethMap'
 import { HeadToHead, Scoreboard, SectionsProgress, TotalsStrip } from '../components/results/Scoreboard'
 import { Container, EmptyState, Segmented, Skeleton } from '../components/ui'
-import { findOffice, getCycle, type Turn } from '../config/elections'
+import { currentYear, findOffice, getCycle, isAvailableYear, type Turn } from '../config/elections'
 import { partyColor } from '../config/parties'
 import { findUf, inUf, ofUf, type Uf } from '../config/ufs'
 import { shade } from '../lib/colors'
@@ -28,6 +28,7 @@ export function StatePage() {
   const uf = findUf(params.uf)
   const { ids } = useElectionIds(cycle?.year ?? 0)
 
+  if (cycle && !isAvailableYear(cycle.year)) return <Navigate to={`/${currentYear()}/${params.cargo}/${params.uf}`} replace />
   if (!cycle || !office || !uf || office.scope === 'mu') return <NotFound />
 
   const q = Number(search.get('turno'))

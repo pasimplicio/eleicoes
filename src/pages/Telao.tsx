@@ -5,7 +5,7 @@ import { ArrowsClockwise, ArrowsIn, ArrowsOut, GearSix, MapPin, SignOut } from '
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { ChoroplethMap } from '../components/map/ChoroplethMap'
-import { findOffice, getCycle, todayBrasilia, type Cycle, type ElectionIds, type Office, type Turn } from '../config/elections'
+import { findOffice, getCycle, todayBrasilia, type Cycle, type ElectionIds, type Office, type Turn, currentYear, isAvailableYear } from '../config/elections'
 import { UF_BY_IBGE, UFS, findUf } from '../config/ufs'
 import { useCandidates } from '../lib/candidates'
 import { cn, fmtInt, fmtPct, fmtUpdated } from '../lib/format'
@@ -48,7 +48,8 @@ export function Telao() {
   const geralParam = search.get('geral')
   const config = useMemo(() => {
     const c = loadTelaoConfig()
-    if (getCycle(anoParam)?.kind === 'geral') c.ano = anoParam
+    if (getCycle(anoParam)?.kind === 'geral' && isAvailableYear(anoParam)) c.ano = anoParam
+    if (!isAvailableYear(c.ano)) c.ano = currentYear()
     if (turnoParam === 1 || turnoParam === 2) c.turno = turnoParam
     // ?telas=presidente-br,governador-sp  |  ?geral=0 desliga o acompanhamento geral
     const telas = (telasParam ?? '')
@@ -61,7 +62,7 @@ export function Telao() {
     return c
   }, [anoParam, turnoParam, telasParam, geralParam])
   const modulos = useMemo(() => roteiro(config), [config])
-  const cycle = getCycle(config.ano) ?? getCycle(2022)!
+  const cycle = getCycle(config.ano) ?? getCycle(currentYear())!
   const { ids } = useElectionIds(cycle.year)
   const turn: Turn = config.turno === 'auto' ? defaultTurn(cycle, Boolean(ids?.[2])) : config.turno
   const scale = useStageScale()
