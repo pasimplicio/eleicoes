@@ -30,6 +30,8 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
+      // Registro feito em src/pwa.ts, que procura versão nova a cada minuto.
+      injectRegister: false,
       includeAssets: ['favicon.svg', 'icons/apple-touch-icon.png'],
       manifest: {
         name: 'Apuração Brasil | Eleições',
@@ -57,16 +59,20 @@ export default defineConfig({
       },
       workbox: {
         navigateFallbackDenylist: [/^\/api\//, /^\/tse\//],
+        // Versão nova assume na hora e apaga os arquivos da versão anterior.
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
         runtimeCaching: [
           {
-            // Resultados: sempre tenta a rede; sem conexão, mostra o último dado.
-            urlPattern: ({ url }) => url.pathname.startsWith('/tse/'),
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'tse-dados',
-              networkTimeoutSeconds: 8,
-              expiration: { maxEntries: 400, maxAgeSeconds: 60 * 60 * 24 * 7 },
-            },
+            // Resultados nunca vêm de cache do aparelho: sempre o dado mais recente.
+            urlPattern: ({ url }) => url.pathname.startsWith('/tse/') && !url.pathname.includes('/fotos/'),
+            handler: 'NetworkOnly',
+          },
+          {
+            urlPattern: ({ url }) => url.pathname.startsWith('/tse/') && url.pathname.includes('/fotos/'),
+            handler: 'CacheFirst',
+            options: { cacheName: 'fotos', expiration: { maxEntries: 600, maxAgeSeconds: 60 * 60 * 24 * 30 } },
           },
           {
             urlPattern: ({ url }) => url.pathname.startsWith('/geo/'),

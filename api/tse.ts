@@ -21,13 +21,14 @@ export async function GET(request: Request): Promise<Response> {
   const isPhoto = /\.jpe?g$/.test(path)
   const isConfig = path.includes('/config/')
   // Dados de apuração: 20s no CDN e até 5 min servindo o último valor enquanto revalida.
+  // Arquivo ainda não publicado (404): expira rápido para o dado novo aparecer logo.
   const cache = !upstream.ok
-    ? 'public, s-maxage=60'
+    ? 'public, max-age=0, s-maxage=15'
     : isPhoto
       ? 'public, max-age=86400, s-maxage=604800, immutable'
       : isConfig
         ? 'public, max-age=60, s-maxage=300, stale-while-revalidate=3600'
-        : 'public, max-age=10, s-maxage=20, stale-while-revalidate=300'
+        : 'public, max-age=0, s-maxage=20, stale-while-revalidate=60'
 
   return new Response(upstream.body, {
     status: upstream.status,
