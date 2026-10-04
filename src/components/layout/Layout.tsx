@@ -1,4 +1,4 @@
-import { Moon, Sun } from '@phosphor-icons/react'
+import { MonitorPlay, Moon, Sun } from '@phosphor-icons/react'
 import { useEffect, useState } from 'react'
 import { Link, NavLink, Outlet, ScrollRestoration } from 'react-router-dom'
 import { cn, fmtDateLong } from '../../lib/format'
@@ -171,6 +171,15 @@ export function Layout() {
           </Container>
         </div>
       </footer>
+      <Link
+        to="/telao"
+        className="fixed right-[max(1rem,env(safe-area-inset-right))] bottom-[max(1rem,env(safe-area-inset-bottom))] z-40 flex min-h-12 items-center gap-2 rounded-full bg-ink px-4 text-sm font-semibold text-page shadow-[0_8px_24px_rgb(17_20_24/0.28)] transition hover:bg-ink-2 active:translate-y-px"
+        aria-label="Abrir o modo telão"
+        title="Modo telão"
+      >
+        <MonitorPlay className="h-5 w-5" weight="fill" />
+        <span className="hidden sm:inline">Modo telão</span>
+      </Link>
       <InstallApp />
       <ScrollRestoration />
     </div>
