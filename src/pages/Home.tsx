@@ -1,4 +1,4 @@
-import { ArrowRight, ChartLineUp, SealCheck, Scales } from '@phosphor-icons/react'
+import { ArrowRight, Bank, Columns, MapTrifold } from '@phosphor-icons/react'
 import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { CandidatesExplorer } from '../components/candidates/CandidatesExplorer'
@@ -144,35 +144,35 @@ export function Home() {
         <div className="grid gap-10 rounded-lg border border-line bg-surface p-6 sm:p-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-16">
           <div>
             <h2 className="font-serif text-3xl leading-tight font-semibold tracking-tight sm:text-4xl">
-              Pesquisas com registro na Justiça Eleitoral
+              Como fica o Congresso Nacional e os governos estaduais
             </h2>
             <p className="mt-4 max-w-[52ch] leading-relaxed text-ink-2">
-              Toda pesquisa divulgada precisa de registro prévio no TSE. Esta seção reúne cada uma com o número de
-              registro ao lado dos resultados.
+              A composição da Câmara e das vagas do Senado em disputa, partido por partido, e quem governa cada
+              estado, com os números oficiais da apuração.
             </p>
             <Link
-              to="/pesquisas"
+              to="/congresso"
               className="mt-7 inline-flex min-h-11 items-center gap-2 rounded-md bg-ink px-5 text-sm font-semibold text-page transition hover:bg-ink-2 active:translate-y-px"
             >
-              Ver pesquisas <ArrowRight className="h-4 w-4" aria-hidden />
+              Ver Congresso e governadores <ArrowRight className="h-4 w-4" aria-hidden />
             </Link>
           </div>
           <dl className="grid content-start gap-7">
             {[
               {
-                icon: SealCheck,
-                t: 'Registro conferível',
-                d: 'Número de registro no TSE e link para o documento original em cada pesquisa.',
+                icon: Columns,
+                t: 'Câmara dos Deputados',
+                d: 'As 513 cadeiras por partido, somando a distribuição de vagas de cada estado pelas regras do TSE.',
               },
               {
-                icon: ChartLineUp,
-                t: 'Evolução por instituto',
-                d: 'A tendência de cada instituto ao longo da campanha, com a margem de erro declarada.',
+                icon: Bank,
+                t: 'Senado Federal',
+                d: 'As 54 vagas em disputa em 2026, duas por estado, com os partidos à frente ou eleitos.',
               },
               {
-                icon: Scales,
-                t: 'Sem enquetes',
-                d: 'Consultas sem método científico não são pesquisas e ficam de fora.',
+                icon: MapTrifold,
+                t: 'Governadores',
+                d: 'Quem lidera ou venceu em cada estado e onde haverá 2º turno.',
               },
             ].map(({ icon: Icon, t, d }) => (
               <div key={t} className="grid grid-cols-[2.5rem_1fr] gap-x-4">

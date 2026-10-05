@@ -8,11 +8,6 @@ const SOURCES = [
     use: 'Apuração por país, estado e município; candidatos, fotos e comparecimento.',
   },
   {
-    name: 'PesqEle, do TSE',
-    url: 'https://pesqele-divulgacao.tse.jus.br',
-    use: 'Registro oficial de pesquisas: instituto, contratante, metodologia e número de registro.',
-  },
-  {
     name: 'Portal de Dados Abertos do TSE',
     url: 'https://dadosabertos.tse.jus.br',
     use: 'Séries históricas de votação e candidaturas para comparar eleições.',

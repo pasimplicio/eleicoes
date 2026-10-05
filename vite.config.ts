@@ -25,7 +25,7 @@ function devApi(names: string[]): Plugin {
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
-    devApi(['municipios', 'pesquisas']),
+    devApi(['municipios']),
     react(),
     tailwindcss(),
     VitePWA({
@@ -36,7 +36,7 @@ export default defineConfig({
       manifest: {
         name: 'Apuração Brasil | Eleições',
         short_name: 'Apuração',
-        description: 'Resultados, mapas e pesquisas eleitorais com dados oficiais do TSE.',
+        description: 'Resultados e mapas das eleições com dados oficiais do TSE.',
         lang: 'pt-BR',
         theme_color: '#111418',
         background_color: '#f3f4f6',
@@ -53,7 +53,7 @@ export default defineConfig({
           { src: '/favicon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
         ],
         shortcuts: [
-          { name: 'Pesquisas', url: '/pesquisas', icons: [{ src: '/icons/icon-192.png', sizes: '192x192' }] },
+          { name: 'Congresso', url: '/congresso', icons: [{ src: '/icons/icon-192.png', sizes: '192x192' }] },
           { name: 'Telão', url: '/telao', icons: [{ src: '/icons/icon-192.png', sizes: '192x192' }] },
         ],
       },

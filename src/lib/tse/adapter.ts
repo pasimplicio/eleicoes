@@ -158,8 +158,9 @@ export function adaptUnified(raw: RawUnified, photoUrl: (sqcand: string) => stri
           votes: int(c.vap),
           pct: pct(c.pvap),
           photo: photoUrl(c.sqcand),
+          // A situação vem de "st" ("Eleito", "2º turno", "Não eleito"). O campo "e" do
+          // formato unificado também vale "s" para quem vai ao 2º turno, então não serve.
           ...st,
-          elected: st.elected || c.e?.toLowerCase() === 's',
         }
       })
       .sort(byVotes),

@@ -6,7 +6,7 @@
 // A distribuição das vagas é refeita pelas regras do Código Eleitoral (lib/proportional.ts):
 // serve de projeção durante a apuração e é substituída pelo resultado oficial quando o
 // TSE o declara.
-import { useQuery } from '@tanstack/react-query'
+import { queryOptions, useQuery } from '@tanstack/react-query'
 import type { Cycle, ElectionIds, Office } from '../../config/elections'
 import { partyColor } from '../../config/parties'
 import { byStatusThenName } from '../candidates'
@@ -212,12 +212,13 @@ function fromUnified(u: RawUnified): { votes: RawPropVotes; fixed: RawPropFixed;
   }
 }
 
-export function useProportional(cycle: Cycle, ids: ElectionIds | undefined, office: Office, uf: string) {
+/** Consulta das proporcionais de uma UF; também usada em lote (Congresso Nacional). */
+export function proportionalQuery(cycle: Cycle, ids: ElectionIds | undefined, office: Office, uf: string) {
   const ele = electionId(ids, office, 1)
   const ufl = uf.toLowerCase()
   const code = proportionalCode(office, uf)
 
-  return useQuery({
+  return queryOptions({
     queryKey: ['proportional', cycle.tse, ele, code, ufl],
     enabled: Boolean(ele),
     refetchInterval: livePolling(cycle, 1, 60_000),
@@ -352,6 +353,10 @@ export function useProportional(cycle: Cycle, ids: ElectionIds | undefined, offi
       }
     },
   })
+}
+
+export function useProportional(cycle: Cycle, ids: ElectionIds | undefined, office: Office, uf: string) {
+  return useQuery(proportionalQuery(cycle, ids, office, uf))
 }
 
 // ------------------------------------------------------------ candidatos (antes da eleição)

@@ -70,7 +70,7 @@ export function Layout() {
       .filter((o) => o.system === 'majoritario')
       .map((o) => ({ to: `/${f.cycle.year}/${o.slug}`, label: o.name, end: false })),
     ...(f.cycle.kind === 'geral' ? [{ to: `/${f.cycle.year}/deputado-federal`, label: 'Deputados', end: false }] : []),
-    { to: '/pesquisas', label: 'Pesquisas', end: false },
+    ...(f.cycle.kind === 'geral' ? [{ to: '/congresso', label: 'Congresso', end: false }] : []),
     { to: '/sobre', label: 'Metodologia', end: false },
     { to: '/telao', label: 'Telão', end: false },
   ]
@@ -138,11 +138,6 @@ export function Layout() {
               <li>
                 <a className="hover:text-ink hover:underline" href="https://resultados.tse.jus.br" target="_blank" rel="noreferrer">
                   Resultados do TSE
-                </a>
-              </li>
-              <li>
-                <a className="hover:text-ink hover:underline" href="https://pesqele-divulgacao.tse.jus.br" target="_blank" rel="noreferrer">
-                  PesqEle, pesquisas registradas
                 </a>
               </li>
               <li>

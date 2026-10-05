@@ -5,7 +5,7 @@ import { AboutPage } from './pages/AboutPage'
 import { Home } from './pages/Home'
 import { NotFound } from './pages/NotFound'
 import { OfficePage } from './pages/OfficePage'
-import { PollsPage } from './pages/PollsPage'
+import { CongressPage } from './pages/CongressPage'
 import { StatePage } from './pages/StatePage'
 import { Telao } from './pages/Telao'
 import { TelaoConfig } from './pages/TelaoConfig'
@@ -26,7 +26,7 @@ const router = createBrowserRouter([
     element: <Layout />,
     children: [
       { path: '/', element: <Home /> },
-      { path: '/pesquisas', element: <PollsPage /> },
+      { path: '/congresso', element: <CongressPage /> },
       { path: '/sobre', element: <AboutPage /> },
       { path: '/:ano/:cargo', element: <OfficePage /> },
       { path: '/:ano/:cargo/:uf', element: <StatePage /> },
