@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { cn } from '../../lib/format'
 
 export interface HemicycleGroup {
   id: string
@@ -36,33 +37,59 @@ function layout(total: number) {
   return { seats, dot }
 }
 
-export function Hemicycle({ groups, total, label }: { groups: HemicycleGroup[]; total: number; label: string }) {
+export function Hemicycle({
+  groups,
+  total,
+  label,
+  highlight,
+  center,
+  animate = false,
+}: {
+  groups: HemicycleGroup[]
+  total: number
+  label: string
+  /** Grupo em destaque: as demais cadeiras esmaecem. */
+  highlight?: string
+  /** Número e legenda do centro (padrão: total de cadeiras). */
+  center?: { value: string; caption: string }
+  /** Cadeiras entram em sequência, da esquerda para a direita. */
+  animate?: boolean
+}) {
   const { seats, dot } = useMemo(() => layout(total), [total])
-  const colors = useMemo(() => {
-    const out: string[] = []
-    for (const g of groups) for (let i = 0; i < g.seats; i++) out.push(g.color)
+  const owners = useMemo(() => {
+    const out: HemicycleGroup[] = []
+    for (const g of groups) for (let i = 0; i < g.seats; i++) out.push(g)
     return out
   }, [groups])
 
   const size = 200
   const pad = (dot * size) / 2 + 2
+  const step = Math.min(4, 900 / Math.max(1, total))
   return (
     <svg viewBox={`${-size / 2 - pad} ${-size / 2 - pad} ${size + 2 * pad} ${size / 2 + 2 * pad}`} role="img" aria-label={label} className="h-auto w-full">
-      {seats.map((s, i) => (
-        <circle
-          key={i}
-          cx={(s.x * size) / 2}
-          cy={(-s.y * size) / 2}
-          r={(dot * size) / 2}
-          fill={colors[i] ?? 'var(--color-map-empty)'}
-          className="transition-[fill] duration-500"
-        />
-      ))}
+      {seats.map((s, i) => {
+        const g = owners[i]
+        const dim = highlight !== undefined && g?.id !== highlight
+        return (
+          <circle
+            key={i}
+            cx={(s.x * size) / 2}
+            cy={(-s.y * size) / 2}
+            r={(dot * size) / 2}
+            fill={g?.color ?? 'var(--color-map-empty)'}
+            opacity={dim ? 0.16 : 1}
+            className={cn('transition-[fill,opacity] duration-500', animate && 'seat-in')}
+            style={animate ? { animationDelay: `${Math.round(i * step)}ms` } : undefined}
+          >
+            {g && <title>{g.label}</title>}
+          </circle>
+        )
+      })}
       <text x={0} y={-14} textAnchor="middle" className="fill-ink font-sans text-[22px] font-semibold tabular">
-        {total}
+        {center?.value ?? total}
       </text>
       <text x={0} y={-2} textAnchor="middle" className="fill-muted font-sans text-[8px]">
-        cadeiras
+        {center?.caption ?? 'cadeiras'}
       </text>
     </svg>
   )

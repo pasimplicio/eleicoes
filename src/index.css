@@ -244,3 +244,26 @@
     width: 100%;
   }
 }
+
+/* Cadeiras do hemiciclo entrando em sequência (atraso por cadeira no estilo inline). */
+.seat-in {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: seat-in 420ms var(--ease-out-expo) both;
+}
+@keyframes seat-in {
+  from {
+    opacity: 0;
+    transform: scale(0.2);
+  }
+}
+
+/* Blocos sem candidato próprio no 2º turno: neutros, distintos do vazio do mapa. */
+:root {
+  --bloc-other: #8b93a1;
+  --bloc-none: #c4c9d2;
+}
+.dark {
+  --bloc-other: #7d8594;
+  --bloc-none: #4a515e;
+}
