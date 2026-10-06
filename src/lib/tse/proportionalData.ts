@@ -396,3 +396,28 @@ export function useProportionalCandidates(year: number, office: Office, uf: stri
     },
   })
 }
+
+// ------------------------------------------------------------ votos por município
+
+/** Resposta de api/votos-municipio.ts. */
+export interface MunicipalVotes {
+  updatedAt: string
+  final: boolean
+  /** código TSE do município -> [votos válidos, % seções, número, votos, número, votos, ...] */
+  mun: Record<string, number[]>
+}
+
+/** Votos de todos os candidatos proporcionais da UF em cada município (formato unificado). */
+export function useMunicipalVotes(cycle: Cycle, ids: ElectionIds | undefined, office: Office, uf: string) {
+  const ele = electionId(ids, office, 1)
+  const code = proportionalCode(office, uf)
+  const ufl = uf.toLowerCase()
+  return useQuery({
+    queryKey: ['mun-votes', cycle.tse, ele, code, ufl],
+    enabled: Boolean(ele) && usesUnified(cycle.year),
+    refetchInterval: livePolling(cycle, 1, 60_000),
+    staleTime: 30_000,
+    queryFn: () =>
+      optional<MunicipalVotes>(`/api/votos-municipio?${new URLSearchParams({ ciclo: cycle.tse, ele: ele!, cargo: code, uf: ufl })}`),
+  })
+}

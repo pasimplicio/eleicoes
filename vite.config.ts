@@ -25,7 +25,7 @@ function devApi(names: string[]): Plugin {
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
-    devApi(['municipios']),
+    devApi(['municipios', 'votos-municipio']),
     react(),
     tailwindcss(),
     VitePWA({

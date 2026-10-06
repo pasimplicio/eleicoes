@@ -40,6 +40,12 @@
    para que partidos de cor escura (ex.: azul-marinho) mantenham contraste AA. */
 :root {
   --chip-mix: 72%;
+  /* Escala sequencial (azul, um tom só) do mapa de votos: 1 = pouco, 5 = muito. */
+  --seq-1: #cde2fb;
+  --seq-2: #86b6ef;
+  --seq-3: #3987e5;
+  --seq-4: #1c5cab;
+  --seq-5: #0d366b;
 }
 
 .dark {
@@ -54,6 +60,12 @@
   --color-brand: #07080a;
   --color-map-empty: #262b35;
   --color-map-stroke: #13161c;
+  /* No escuro a âncora inverte: mais votos = mais claro, contra o fundo escuro. */
+  --seq-1: #104281;
+  --seq-2: #1c5cab;
+  --seq-3: #2a78d6;
+  --seq-4: #6da7ec;
+  --seq-5: #cde2fb;
 }
 
 @layer base {

@@ -1,6 +1,7 @@
 import { ArrowSquareOut, Info, MagnifyingGlass, UsersThree } from '@phosphor-icons/react'
 import { useDeferredValue, useId, useMemo, useState, type ReactNode } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { voteMapHref } from '../../lib/links'
 import type { Cycle, ElectionIds, Office } from '../../config/elections'
 import { todayBrasilia } from '../../config/elections'
 import { partyColor } from '../../config/parties'
@@ -155,7 +156,7 @@ function ResultsView({ cycle, ids, office, uf, header, controls, onUf }: ViewPro
 
           <section aria-labelledby="todos">
             <SectionHeading id="todos" title="Todos os candidatos" />
-            <CandidateTable d={d} />
+            <CandidateTable d={d} mapHref={(n) => voteMapHref(office.slug, uf.sigla, n)} />
           </section>
 
           <Rules d={d} year={cycle.year} />
@@ -271,7 +272,7 @@ const OUTCOME_LABEL: Record<CandidateOutcome, string> = {
   'nao-eleito': 'Não eleito',
 }
 
-function OutcomeBadge({ outcome, short }: { outcome: CandidateOutcome; short?: boolean }) {
+export function OutcomeBadge({ outcome, short }: { outcome: CandidateOutcome; short?: boolean }) {
   const elected = outcome === 'qp' || outcome === 'media'
   return (
     <span
@@ -386,7 +387,7 @@ function Filters({
 
 const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 
-function CandidateTable({ d }: { d: ProportionalData }) {
+function CandidateTable({ d, mapHref }: { d: ProportionalData; mapHref: (number: string) => string }) {
   const [q, setQ] = useState('')
   const [party, setParty] = useState('')
   const [status, setStatus] = useState<'todos' | 'eleitos' | 'suplente' | 'nao-eleito'>('todos')
@@ -446,7 +447,7 @@ function CandidateTable({ d }: { d: ProportionalData }) {
           </thead>
           <tbody>
             {rows.slice(0, limit).map((c) => (
-              <CandidateRow key={c.id} c={c} rank={rank.get(c.id)!} color={partyColors.get(c.partyId)!} />
+              <CandidateRow key={c.id} c={c} rank={rank.get(c.id)!} color={partyColors.get(c.partyId)!} mapHref={mapHref(c.number)} />
             ))}
           </tbody>
         </table>
@@ -464,7 +465,7 @@ function CandidateTable({ d }: { d: ProportionalData }) {
   )
 }
 
-function CandidateRow({ c, rank, color }: { c: PropCandidate; rank: number; color: string }) {
+function CandidateRow({ c, rank, color, mapHref }: { c: PropCandidate; rank: number; color: string; mapHref: string }) {
   return (
     <tr className="border-b border-line last:border-0">
       <td className="px-4 py-2 text-right text-muted tabular">{rank}</td>
@@ -472,7 +473,9 @@ function CandidateRow({ c, rank, color }: { c: PropCandidate; rank: number; colo
         <span className="flex items-center gap-2.5">
           <span className="h-7 w-1 shrink-0 rounded-full" style={{ background: color }} aria-hidden />
           <span className="min-w-0">
-            <span className="block font-medium">{c.name}</span>
+            <Link to={mapHref} className="block font-medium hover:underline" title={`Ver os votos de ${c.name} por município`}>
+              {c.name}
+            </Link>
             <span className="block text-xs text-muted tabular">
               <span className="sm:hidden">{c.party}, </span>
               {c.number}

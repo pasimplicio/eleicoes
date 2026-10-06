@@ -70,7 +70,12 @@ export function Layout() {
       .filter((o) => o.system === 'majoritario')
       .map((o) => ({ to: `/${f.cycle.year}/${o.slug}`, label: o.name, end: false })),
     ...(f.cycle.kind === 'geral' ? [{ to: `/${f.cycle.year}/deputado-federal`, label: 'Deputados', end: false }] : []),
-    ...(f.cycle.kind === 'geral' ? [{ to: '/congresso', label: 'Congresso', end: false }] : []),
+    ...(f.cycle.kind === 'geral'
+      ? [
+          { to: '/congresso', label: 'Congresso', end: false },
+          { to: '/mapa-de-votos', label: 'Mapa de votos', end: false },
+        ]
+      : []),
     { to: '/sobre', label: 'Metodologia', end: false },
     { to: '/telao', label: 'Telão', end: false },
   ]
