@@ -262,8 +262,11 @@
 :root {
   --bloc-other: #8b93a1;
   --bloc-none: #c4c9d2;
+  /* Governo ainda a decidir no 2º turno: âmbar claro, distinto dos cinzas. */
+  --runoff: #f3dc8a;
 }
 .dark {
   --bloc-other: #7d8594;
   --bloc-none: #4a515e;
+  --runoff: #6b5714;
 }

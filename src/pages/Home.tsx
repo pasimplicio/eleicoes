@@ -144,11 +144,11 @@ export function Home() {
         <div className="grid gap-10 rounded-lg border border-line bg-surface p-6 sm:p-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-16">
           <div>
             <h2 className="font-serif text-3xl leading-tight font-semibold tracking-tight sm:text-4xl">
-              Como fica o Congresso Nacional e os governos estaduais
+              O Congresso eleito e os governadores
             </h2>
             <p className="mt-4 max-w-[52ch] leading-relaxed text-ink-2">
-              A composição da Câmara e das vagas do Senado em disputa, partido por partido, e quem governa cada
-              estado, com os números oficiais da apuração.
+              A composição da Câmara e dos senadores eleitos, partido por partido e por aliança, e quem vai
+              governar cada estado, com os resultados oficiais do TSE.
             </p>
             <Link
               to="/congresso"
@@ -162,17 +162,17 @@ export function Home() {
               {
                 icon: Columns,
                 t: 'Câmara dos Deputados',
-                d: 'As 513 cadeiras por partido, somando a distribuição de vagas de cada estado pelas regras do TSE.',
+                d: 'Os 513 deputados federais eleitos, por partido e por aliança, com a bancada de cada estado.',
               },
               {
                 icon: Bank,
                 t: 'Senado Federal',
-                d: 'As 54 vagas em disputa em 2026, duas por estado, com os partidos à frente ou eleitos.',
+                d: 'Os 54 senadores eleitos em 2026, dois por estado, que renovam dois terços da Casa.',
               },
               {
                 icon: MapTrifold,
                 t: 'Governadores',
-                d: 'Quem lidera ou venceu em cada estado e onde haverá 2º turno.',
+                d: 'Os governadores eleitos e os estados que decidem no 2º turno.',
               },
             ].map(({ icon: Icon, t, d }) => (
               <div key={t} className="grid grid-cols-[2.5rem_1fr] gap-x-4">

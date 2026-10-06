@@ -1,6 +1,6 @@
 // Visão do Congresso Nacional e dos governos estaduais a partir da apuração oficial:
-// Câmara (513 cadeiras, soma da distribuição de vagas de cada UF), Senado (vagas em
-// disputa no ciclo) e governadores. A correlação de forças agrupa os partidos pela
+// Câmara (513 deputados eleitos, bancada a bancada), Senado (senadores eleitos no
+// ciclo) e governadores (eleitos e estados com 2º turno). A correlação de forças agrupa os partidos pela
 // aliança presidencial que registraram no TSE no 1º turno (lib/tse/alliances.ts).
 import { Clock } from '@phosphor-icons/react'
 import { useQueries } from '@tanstack/react-query'
@@ -14,7 +14,7 @@ import { findOffice, type Cycle, type ElectionIds, type Turn } from '../config/e
 import { partyColor } from '../config/parties'
 import { findUf, ofUf, UF_BY_IBGE, UFS } from '../config/ufs'
 import { leaderColor } from '../lib/colors'
-import { cn, fmtInt, fmtPct } from '../lib/format'
+import { cn, fmtDateLong, fmtInt, fmtPct } from '../lib/format'
 import { useFeaturedCycle } from '../lib/phase'
 import { NONE_ID, OTHER_ID, useAlliances, type Alliances, type Bloc } from '../lib/tse/alliances'
 import type { ResultSummary } from '../lib/tse/model'
@@ -22,8 +22,14 @@ import { proportionalQuery, type ProportionalData } from '../lib/tse/proportiona
 import { useUfResults } from '../lib/tse/queries'
 
 const CAMARA = 513
+/** Estados em que o governo é decidido no 2º turno. */
+const RUNOFF_ID = '2t'
+
 /** Faixas em cinza: número em tinta escura, não em branco. */
-const NEUTRAL = new Set([NONE_ID, OTHER_ID, '-'])
+const NEUTRAL = new Set([NONE_ID, OTHER_ID, RUNOFF_ID, '-'])
+
+/** Governo decidido no 2º turno: 1º turno encerrado, sem eleito e com finalistas. */
+const isRunoff = (r?: ResultSummary) => Boolean(r && !r.candidates[0]?.elected && r.candidates.some((c) => c.runoff))
 const SENADO = 81
 const GOVERNOS = 27
 
@@ -133,7 +139,7 @@ function Congress({ cycle, ids, turn }: { cycle: Cycle; ids?: ElectionIds; turn:
   /** UFs cuja bancada ainda é projeção (TSE não declarou os eleitos ou sem dados). */
   const depPending = delegations.filter(({ d }) => !d?.official).map(({ uf }) => uf)
 
-  // Senado: os mais votados de cada UF nas vagas em disputa.
+  // Senado: os eleitos de cada UF nas vagas renovadas no ciclo.
   const perUf = senateSeatsPerUf(cycle.year)
   const senTotal = perUf * UFS.length
   const sen = useUfResults({ cycle, ids, office: findOffice(cycle, 'senador')!, turn: 1 })
@@ -148,12 +154,14 @@ function Congress({ cycle, ids, turn }: { cycle: Cycle; ids?: ElectionIds; turn:
   )
   const senFinal = UFS.every((uf) => sen.byUf[uf.sigla]?.final)
 
-  // Governadores: quem lidera, venceu ou vai ao 2º turno.
+  // Governadores: só os eleitos contam para as forças; estados com 2º turno ficam à parte,
+  // sem serem atribuídos a quem liderou o 1º turno.
   const gov = useUfResults({ cycle, ids, office: findOffice(cycle, 'governador')!, turn })
   const governors: Seat[] = UFS.flatMap((uf) => {
     const lead = gov.byUf[uf.sigla]?.candidates[0]
-    return lead ? [{ party: lead.party, uf: uf.sigla }] : []
+    return lead?.elected ? [{ party: lead.party, uf: uf.sigla }] : []
   })
+  const govRunoff = UFS.filter((uf) => isRunoff(gov.byUf[uf.sigla])).length
 
   const nothing = !depLoaded.length && !sen.loaded && !gov.loaded
   const loading = depResults.some((r) => r.isLoading) || sen.loading || gov.loading
@@ -164,11 +172,11 @@ function Congress({ cycle, ids, turn }: { cycle: Cycle; ids?: ElectionIds; turn:
         <header className="max-w-3xl">
           <p className="text-sm text-muted">Eleições gerais de {cycle.year}</p>
           <h1 className="mt-1 font-serif text-4xl leading-tight font-semibold tracking-tight sm:text-5xl">
-            Congresso Nacional e governadores
+            O Congresso eleito e os governadores
           </h1>
           <p className="mt-4 leading-relaxed text-ink-2">
-            A correlação de forças que sai das urnas: Câmara dos Deputados, vagas do Senado em disputa e governos
-            estaduais, com os números oficiais da apuração do TSE. Atualiza sozinho.
+            A correlação de forças que saiu das urnas: os deputados federais e senadores eleitos em {cycle.year} e os
+            governadores, com os resultados oficiais do TSE.
           </p>
         </header>
       </Container>
@@ -216,6 +224,7 @@ function Congress({ cycle, ids, turn }: { cycle: Cycle; ids?: ElectionIds; turn:
               deputies={deputies}
               senators={senators}
               governors={governors}
+              govRunoff={govRunoff}
               senTotal={senTotal}
               year={cycle.year}
               depOfficial={depOfficial}
@@ -253,6 +262,7 @@ function Forcas({
   deputies,
   senators,
   governors,
+  govRunoff,
   senTotal,
   year,
   depOfficial,
@@ -262,6 +272,7 @@ function Forcas({
   deputies: Seat[]
   senators: Seat[]
   governors: Seat[]
+  govRunoff: number
   senTotal: number
   year: number
   depOfficial: boolean
@@ -299,19 +310,28 @@ function Forcas({
 
       <div className="mt-12 space-y-10">
         <ForceBar
-          title="Câmara dos Deputados"
-          caption={depOfficial ? 'Resultado oficial' : depPending.length < UFS.length ? `Oficial em ${UFS.length - depPending.length} de ${UFS.length} estados` : 'Projeção pela apuração'}
+          title={`Câmara dos Deputados, ${CAMARA} deputados eleitos`}
+          caption={
+            depOfficial
+              ? 'Resultado oficial do TSE'
+              : `Oficial em ${UFS.length - depPending.length} de ${UFS.length} estados; ${depPending.map((p) => findUf(p)!.nome).join(', ')} com totalização a concluir`
+          }
           total={CAMARA}
           segments={seg(dep)}
           thresholds={CAMARA_QUORUNS}
         />
         <ForceBar
-          title={`Senado Federal, ${senTotal} vagas em disputa`}
-          caption={`As outras ${SENADO - senTotal} cadeiras são de senadores eleitos em ${year - 4}`}
+          title={`Senado Federal, ${senTotal} senadores eleitos em ${year}`}
+          caption={`As outras ${SENADO - senTotal} cadeiras são dos senadores eleitos em ${year - 4}`}
           total={senTotal}
           segments={seg(sen)}
         />
-        <ForceBar title="Governos estaduais" caption="Eleitos ou à frente em cada estado" total={GOVERNOS} segments={seg(gov)} />
+        <ForceBar
+          title="Governos estaduais"
+          caption={govRunoff ? `${GOVERNOS - govRunoff} eleitos no 1º turno; ${govRunoff} a decidir no 2º turno` : 'Governadores eleitos'}
+          total={GOVERNOS}
+          segments={[...seg(gov), { id: RUNOFF_ID, label: '2º turno', color: 'var(--runoff)', value: govRunoff }]}
+        />
       </div>
     </section>
   )
@@ -462,17 +482,18 @@ function Camara({
       />
       <p className="mb-8 max-w-3xl text-sm leading-relaxed text-muted">
         {official
-          ? 'Resultado oficial: vagas declaradas pelo TSE em todos os estados.'
+          ? `Os ${CAMARA} deputados federais eleitos, como declarados pelo TSE.`
           : pending.length < UFS.length
-            ? `Resultado oficial do TSE em ${UFS.length - pending.length} de ${UFS.length} estados. Em ${pending.map((p) => findUf(p)!.nome).join(', ')}, o TSE ainda não concluiu a totalização: ali as vagas são projetadas pelas regras do Código Eleitoral e podem mudar.`
-            : 'Projeção pelas regras do Código Eleitoral com a apuração parcial; muda a cada atualização até o TSE declarar os eleitos.'}
-        {ufObj && ` Mostrando a bancada ${ofUf(ufObj)}: ${total} cadeiras.`}
+            ? `Os ${CAMARA} deputados federais eleitos. Eleitos declarados pelo TSE em ${UFS.length - pending.length} de ${UFS.length} estados; em ${pending.map((p) => findUf(p)!.nome).join(', ')}, o TSE ainda não publicou a totalização final, e as vagas de lá são calculadas pelas regras do Código Eleitoral com os votos apurados.`
+            : 'Vagas calculadas pelas regras do Código Eleitoral com os votos apurados, até o TSE declarar os eleitos.'}
+        {ufObj && ` Bancada ${ofUf(ufObj)}: ${total} deputados.`}
       </p>
       <Chamber
         key={uf}
         total={total}
         groups={groups}
-        label={`Distribuição das ${total} cadeiras ${ufObj ? `da bancada ${ofUf(ufObj)}` : 'da Câmara dos Deputados'}`}
+        label={`Distribuição dos ${total} deputados eleitos ${ufObj ? `na bancada ${ofUf(ufObj)}` : 'para a Câmara dos Deputados'}`}
+        caption="deputados"
         thresholds={ufObj ? [] : CAMARA_QUORUNS}
       />
     </section>
@@ -529,14 +550,15 @@ function Senado({
     <section aria-labelledby="senado" className="scroll-mt-36">
       <SectionHeading id="senado" title="Senado Federal" />
       <p className="mb-8 max-w-3xl text-sm leading-relaxed text-muted">
-        {total} das {SENADO} cadeiras estão em disputa em {year}, {perUf === 2 ? 'duas' : 'uma'} por estado.{' '}
-        {final ? 'Resultado oficial.' : 'Os mais votados em cada estado até agora.'} As outras {SENADO - total} cadeiras
-        seguem com os senadores eleitos em {year - 4}, que não entram nesta conta.
+        Os {total} senadores eleitos em {year}, {perUf === 2 ? 'dois' : 'um'} por estado, renovam{' '}
+        {perUf === 2 ? 'dois terços' : 'um terço'} do Senado.{final ? '' : ' Totalização ainda não concluída em todos os estados.'}{' '}
+        As outras {SENADO - total} cadeiras seguem com os senadores eleitos em {year - 4}, que não entram nesta conta.
       </p>
       <Chamber
         total={total}
         groups={groups}
-        label={`Distribuição das ${total} vagas de senador em disputa`}
+        label={`Distribuição dos ${total} senadores eleitos em ${year}`}
+        caption="eleitos"
         highlight={hover}
         onHighlight={setHover}
       />
@@ -587,18 +609,31 @@ function Governadores({
   governors: Seat[]
 }) {
   const navigate = useNavigate()
-  const groups = useMemo(() => groupSeats(governors, modo, alliances), [governors, modo, alliances])
+  const leaders = UFS.map((uf) => ({ uf, r: byUf[uf.sigla], lead: byUf[uf.sigla]?.candidates[0] }))
+  const runoffUfs = leaders.filter(({ r }) => isRunoff(r))
+  const groups = useMemo(() => {
+    const g = groupSeats(governors, modo, alliances)
+    return runoffUfs.length
+      ? [...g, { id: RUNOFF_ID, label: '2º turno', color: 'var(--runoff)', seats: runoffUfs.length }]
+      : g
+  }, [governors, modo, alliances, runoffUfs.length])
   const [hover, setHover] = useState<string>()
-  const keyOf = (party: string) => (modo === 'aliancas' && alliances ? alliances.blocOf(party).id : party)
+  /** Grupo de um estado: o do eleito, ou "2º turno". */
+  const groupOf = (r?: ResultSummary) => {
+    const lead = r?.candidates[0]
+    if (!lead) return undefined
+    if (isRunoff(r)) return RUNOFF_ID
+    return modo === 'aliancas' && alliances ? alliances.blocOf(lead.party).id : lead.party
+  }
   const colorOf = (r?: ResultSummary) => {
     const lead = r?.candidates[0]
     if (!lead) return undefined
+    if (isRunoff(r)) return 'var(--runoff)'
+    if (!lead.elected) return undefined
     if (modo === 'aliancas' && alliances) return alliances.blocOf(lead.party).color
     return leaderColor(r)
   }
-  const leaders = UFS.map((uf) => ({ uf, r: byUf[uf.sigla], lead: byUf[uf.sigla]?.candidates[0] }))
-  const elected = leaders.filter(({ lead }) => lead?.elected).length
-  const runoff = leaders.filter(({ r }) => r && r.turn === 1 && r.final && r.candidates.some((c) => c.runoff)).length
+  const elected = governors.length
   const href = (sigla: string) => `/${cycle.year}/governador/${sigla.toLowerCase()}?turno=${turn}`
 
   return (
@@ -606,20 +641,27 @@ function Governadores({
       <SectionHeading id="governadores" title="Governadores" />
       <p className="mb-8 max-w-3xl text-sm leading-relaxed text-muted">
         {elected} {elected === 1 ? 'governador eleito' : 'governadores eleitos'}
-        {runoff ? `, ${runoff} ${runoff === 1 ? 'estado vai' : 'estados vão'} ao 2º turno` : ''}. Nos demais, quem está à
-        frente na apuração. Toque num estado para ver o resultado.
+        {turn === 1 ? ' no 1º turno' : ''}.
+        {runoffUfs.length > 0 &&
+          ` Em ${runoffUfs.length} ${runoffUfs.length === 1 ? 'estado' : 'estados'} o governo é decidido no 2º turno, em ${fmtDateLong(cycle.dates[2])}, entre os dois mais votados.`}{' '}
+        Toque num estado para ver o resultado.
       </p>
       <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-10 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:gap-12">
         <figure>
           <ChoroplethMap
             src="/geo/br-uf.json"
-            label={`Mapa do Brasil com ${modo === 'aliancas' ? 'a aliança presidencial' : 'o partido'} à frente na disputa para governador em cada estado`}
-            focus={hover ? leaders.filter(({ lead }) => lead && keyOf(lead.party) === hover).map(({ uf }) => uf.ibge) : undefined}
+            label={`Mapa do Brasil com ${modo === 'aliancas' ? 'a aliança presidencial' : 'o partido'} do governador eleito em cada estado; em cinza, estados com 2º turno`}
+            focus={hover ? leaders.filter(({ r }) => groupOf(r) === hover).map(({ uf }) => uf.ibge) : undefined}
             fill={(code) => colorOf(byUf[UF_BY_IBGE[code]?.sigla])}
             name={(code) => {
               const uf = UF_BY_IBGE[code]
-              const lead = byUf[uf.sigla]?.candidates[0]
-              return lead ? `${uf.nome}: ${lead.name} (${lead.party}) com ${fmtPct(lead.pct)}` : uf.nome
+              const r = byUf[uf.sigla]
+              if (isRunoff(r)) {
+                const [a, b] = r!.candidates
+                return `${uf.nome}: 2º turno entre ${a.name} (${a.party}) e ${b.name} (${b.party})`
+              }
+              const lead = r?.candidates[0]
+              return lead ? `${uf.nome}: ${lead.name} (${lead.party}) eleito com ${fmtPct(lead.pct)}` : uf.nome
             }}
             onSelect={(code) => navigate(href(UF_BY_IBGE[code].sigla))}
           />
@@ -629,14 +671,16 @@ function Governadores({
         </figure>
         <ul className="divide-y divide-line rounded-lg border border-line bg-surface">
           {leaders.map(({ uf, r, lead }) => (
-            <li key={uf.sigla} className={cn('transition-opacity', hover && lead && keyOf(lead.party) !== hover && 'opacity-30')}>
+            <li key={uf.sigla} className={cn('transition-opacity', hover && lead && groupOf(r) !== hover && 'opacity-30')}>
               <button
                 type="button"
                 onClick={() => navigate(href(uf.sigla))}
                 className="grid w-full cursor-pointer grid-cols-[2rem_auto_1fr_auto] items-center gap-x-3 px-4 py-2.5 text-left transition hover:bg-surface-2"
               >
                 <span className="text-sm font-semibold text-muted">{uf.sigla}</span>
-                {lead ? (
+                {isRunoff(r) ? (
+                  <RunoffPair r={r!} />
+                ) : lead ? (
                   <>
                     <CandidatePhoto src={lead.photo} name={lead.name} color={partyColor(lead.party)} size={36} />
                     <span className="min-w-0">
@@ -662,12 +706,33 @@ function Governadores({
 
 function GovStatus({ r }: { r: ResultSummary }) {
   const lead = r.candidates[0]
-  const [text, tone] = lead.elected
-    ? ['Eleito', 'text-ok']
-    : r.final && r.candidates.some((c) => c.runoff)
-      ? ['2º turno', 'text-ink-2']
-      : ['À frente', 'text-muted']
+  const [text, tone] = lead.elected ? ['Eleito', 'text-ok'] : r.final ? ['Resultado final', 'text-muted'] : ['Em apuração', 'text-muted']
   return <span className={cn('block text-xs font-medium', tone)}>{text}</span>
+}
+
+/** Estado com 2º turno: os dois finalistas, lado a lado, sem apontar vencedor. */
+function RunoffPair({ r }: { r: ResultSummary }) {
+  const finalists = r.candidates.filter((c) => c.runoff).slice(0, 2)
+  return (
+    <>
+      <span className="flex -space-x-2">
+        {finalists.map((c) => (
+          <CandidatePhoto key={c.id} src={c.photo} name={c.name} color={partyColor(c.party)} size={32} />
+        ))}
+      </span>
+      <span className="min-w-0 text-sm">
+        {finalists.map((c, i) => (
+          <span key={c.id} className="block truncate">
+            <span className={cn(i === 0 && 'font-semibold')}>{c.name}</span>{' '}
+            <span className="text-xs text-muted">
+              {c.party} {fmtPct(c.pct)}
+            </span>
+          </span>
+        ))}
+      </span>
+      <span className="text-right text-xs font-medium text-ink-2">2º turno</span>
+    </>
+  )
 }
 
 // ------------------------------------------------------------------ partes comuns
@@ -688,10 +753,13 @@ function Chamber({
   thresholds = [],
   highlight: controlled,
   onHighlight,
+  caption = 'cadeiras',
 }: {
   total: number
   groups: Group[]
   label: string
+  /** Legenda do número central (ex.: "eleitos"). */
+  caption?: string
   thresholds?: { seats: number; label: string }[]
   highlight?: string
   onHighlight?: (id?: string) => void
@@ -716,7 +784,7 @@ function Chamber({
           groups={hemi}
           label={label}
           highlight={highlight}
-          center={focused ? { value: String(focused.seats), caption: focused.label } : undefined}
+          center={focused ? { value: String(focused.seats), caption: focused.label } : { value: String(total), caption }}
         />
         {thresholds.length > 0 && (
           <ul className="mt-2 flex flex-wrap justify-center gap-x-5 gap-y-1 text-xs text-muted">
@@ -732,7 +800,7 @@ function Chamber({
           </ul>
         )}
         {allocated < total && (
-          <p className="mt-2 text-center text-sm text-muted">{fmtInt(total - allocated)} cadeiras dependem de estados ainda sem dados.</p>
+          <p className="mt-2 text-center text-sm text-muted">{fmtInt(total - allocated)} cadeiras sem dados do TSE.</p>
         )}
       </figure>
       <ol className="space-y-1" aria-label="Cadeiras por grupo" onMouseLeave={() => set(undefined)}>
