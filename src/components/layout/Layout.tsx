@@ -42,6 +42,17 @@ function ElectionBar() {
         </span>
         {f.live ? (
           <LiveBadge />
+        ) : f.betweenRounds ? (
+          <>
+            <span className="hidden text-on-brand/70 sm:inline">2º turno em {fmtDateLong(f.cycle.dates[2])}</span>
+            <span className="ml-auto text-on-brand/70">
+              <span className="hidden sm:inline">Resultados do 2º turno em </span>
+              <span className="sm:hidden">2º turno em </span>
+              <strong className="font-semibold text-accent">
+                <CountdownInline to={resultsStart(f.cycle.dates[2])} />
+              </strong>
+            </span>
+          </>
         ) : f.started ? (
           <span className="text-on-brand/70">Resultados finais</span>
         ) : (

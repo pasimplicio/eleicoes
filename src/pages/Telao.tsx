@@ -12,7 +12,7 @@ import { cn, fmtInt, fmtPct, fmtUpdated } from '../lib/format'
 import { defaultTurn } from '../lib/phase'
 import { loadTelaoConfig, roteiro, type TelaoModulo } from '../lib/telao'
 import type { CandidateResult, ResultSummary } from '../lib/tse/model'
-import { useElectionIds, useResult, useUfResults } from '../lib/tse/queries'
+import { isRunoffPending, useElectionIds, useResult, useUfResults } from '../lib/tse/queries'
 
 const STAGE_W = 1280
 const STAGE_H = 720
@@ -232,11 +232,18 @@ function Abrangencia({
   const effectiveTurn: Turn = office.hasRunoff ? turn : 1
   const result = useResult({ cycle, ids, office, turn: effectiveTurn }, abr)
   const aguardando = !result.data
-  const registered = useCandidates(cycle, ids, office, aguardando ? abr : undefined)
+  // 2º turno ainda sem arquivo: só os dois finalistas do 1º turno, zerados.
+  const parent1 = useResult({ cycle, ids, office, turn: 1 }, office.scope === 'br' ? 'br' : abr)
+  const finalists = aguardando && effectiveTurn === 2 && isRunoffPending(parent1.data)
+    ? parent1.data!.candidates.filter((c) => c.runoff)
+    : undefined
+  const registered = useCandidates(cycle, ids, office, aguardando && !finalists ? abr : undefined)
 
   const cards: CandidateCard[] = result.data
     ? result.data.candidates.map((c) => ({ ...c, status: statusOf(c, result.data!, office, Boolean(uf)) }))
-    : (registered.data?.candidates ?? []).map((c) => ({
+    : finalists
+      ? finalists.map((c) => ({ ...c, votes: 0, pct: 0, status: undefined }))
+      : (registered.data?.candidates ?? []).map((c) => ({
         id: c.id,
         number: c.number,
         name: c.name,

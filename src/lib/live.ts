@@ -6,7 +6,7 @@ import { currentYear, todayBrasilia, type Cycle } from '../config/elections'
 
 export const LIVE_INTERVAL = 30_000
 
-function nextDay(iso: string): string {
+export function nextDay(iso: string): string {
   const d = new Date(`${iso}T12:00:00Z`)
   d.setUTCDate(d.getUTCDate() + 1)
   return d.toISOString().slice(0, 10)
@@ -35,7 +35,8 @@ export function livePolling(cycle: Cycle, requestedTurn = 1, interval = LIVE_INT
     const d = q.state.data
     if (d && !d.final) return interval
     if (!inLiveWindow(cycle)) return false
-    if (!d) return interval
+    // Entre os turnos, o 2º turno não tem o que mudar até o dia da votação.
+    if (!d) return requestedTurn === 2 && todayBrasilia() < cycle.dates[2] ? 10 * 60_000 : interval
     if (requestedTurn === 2 && d.turn === 1 && todayBrasilia() >= cycle.dates[2]) return interval * 2
     return false
   }

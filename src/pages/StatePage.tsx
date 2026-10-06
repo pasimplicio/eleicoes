@@ -2,6 +2,7 @@ import { CaretRight, MagnifyingGlass, MapPin, X } from '@phosphor-icons/react'
 import { useId, useMemo, useState } from 'react'
 import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom'
 import { ChoroplethMap } from '../components/map/ChoroplethMap'
+import { RunoffPreview } from '../components/results/Runoff'
 import { HeadToHead, Scoreboard, SectionsProgress, TotalsStrip } from '../components/results/Scoreboard'
 import { Container, EmptyState, Segmented, Skeleton } from '../components/ui'
 import { currentYear, findOffice, getCycle, isAvailableYear, type Turn } from '../config/elections'
@@ -11,6 +12,7 @@ import { shade } from '../lib/colors'
 import { cn, fmtPct } from '../lib/format'
 import { defaultTurn } from '../lib/phase'
 import {
+  isRunoffPending,
   useCityResult,
   useElectionIds,
   useMunicipalities,
@@ -74,6 +76,18 @@ function StateView({
   const { cycle, office, turn, ids } = target
   const ufl = uf.sigla.toLowerCase()
   const state = useResult(target, ufl)
+  // 2º turno ainda sem arquivo: quem disputa vem do 1º turno (Brasil para presidente,
+  // a UF para governador); os números mostrados são os do 1º turno neste estado.
+  const parent1 = useResult({ ...target, turn: 1 }, office.scope === 'br' ? 'br' : ufl)
+  const state1 = useResult({ ...target, turn: 1 }, ufl)
+  const runoffPreview = useMemo(() => {
+    if (turn !== 2 || state.data || !isRunoffPending(parent1.data) || !state1.data) return undefined
+    const ids = new Set(parent1.data!.candidates.filter((c) => c.runoff).map((c) => c.id))
+    return {
+      ...state1.data,
+      candidates: state1.data.candidates.filter((c) => ids.has(c.id)).map((c) => ({ ...c, runoff: true })),
+    }
+  }, [turn, state.data, parent1.data, state1.data])
   const city = useCityResult(target, uf.sigla, mun)
   const leaders = useMunicipalLeaders(target, uf.sigla)
   const { data: municipalities } = useMunicipalities(uf.sigla)
@@ -169,6 +183,8 @@ function StateView({
               <Skeleton className="h-14 w-full" />
               <Skeleton className="h-14 w-full" />
             </div>
+          ) : !selected && runoffPreview ? (
+            <RunoffPreview cycle={cycle} first={runoffPreview} place={uf.nome} />
           ) : shown.data ? (
             <div className="space-y-6">
               <SectionsProgress result={shown.data} />

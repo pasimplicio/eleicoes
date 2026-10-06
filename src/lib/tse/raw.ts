@@ -99,7 +99,8 @@ export interface RawElectionConfig {
   pl: {
     cd: string
     dt: string
-    e: { cd: string; t: string; nm: string; tp: string; abr?: { cd: string; cp?: { cd: string }[] }[] }[]
+    /** cdt2: código da eleição de 2º turno, publicado junto com o 1º turno. */
+    e: { cd: string; cdt2?: string; t: string; nm: string; tp: string; abr?: { cd: string; cp?: { cd: string }[] }[] }[]
   }[]
 }
 

@@ -6,11 +6,12 @@ import { CandidatesExplorer } from '../candidates/CandidatesExplorer'
 import { partyColor } from '../../config/parties'
 import { UF_BY_IBGE, UFS, type Region } from '../../config/ufs'
 import { leaderColor } from '../../lib/colors'
-import { cn, fmtPct, slugify } from '../../lib/format'
+import { cn, fmtDateLong, fmtPct, slugify } from '../../lib/format'
 import type { ResultSummary } from '../../lib/tse/model'
 import { useQuery } from '@tanstack/react-query'
 import { aggregateResults } from '../../lib/tse/adapter'
-import { electionId, resultQuery, useResult, useUfResults } from '../../lib/tse/queries'
+import { electionId, isRunoffPending, resultQuery, useResult, useUfResults } from '../../lib/tse/queries'
+import { RunoffPreview } from './Runoff'
 import { ChoroplethMap } from '../map/ChoroplethMap'
 import { EmptyState, Segmented, SectionHeading, Skeleton } from '../ui'
 import { CandidatePhoto, PartyChip } from './Candidate'
@@ -32,8 +33,17 @@ export function NationalExplorer({ cycle, ids, office, turn, header }: Props) {
   const navigate = useNavigate()
   const target = { cycle, ids, office, turn }
   const national = useResult(target, 'br')
-  const { byUf, loaded, loading } = useUfResults(target)
+  const { byUf: byUfTurn, loaded, loading } = useUfResults(target)
   const isNational = office.scope === 'br'
+  // 2º turno ainda sem arquivo: finalistas e mapa vêm do 1º turno (rotulados como tal).
+  const firstTarget = { ...target, turn: 1 as Turn }
+  const national1 = useResult(firstTarget, 'br')
+  const first = useUfResults(firstTarget)
+  const runoffNational = turn === 2 && isNational && !national.data && isRunoffPending(national1.data)
+  const byUf = runoffNational ? first.byUf : byUfTurn
+  /** UF com 2º turno ainda por vir (governador): resultado do 1º turno para a prévia. */
+  const pendingOf = (sigla: string) =>
+    turn === 2 && !byUfTurn[sigla] && isRunoffPending(first.byUf[sigla]) ? first.byUf[sigla] : undefined
   // Exterior (abrangência "zz" do TSE): só há votos para presidente. Aparece quando o
   // TSE publicar o arquivo oficial; até lá a consulta devolve null e nada é exibido.
   const exterior = useQuery({
@@ -70,7 +80,7 @@ export function NationalExplorer({ cycle, ids, office, turn, header }: Props) {
 
   // Dia da eleição antes da divulgação (ou arquivos ainda não publicados): mostra os
   // candidatos. As consultas acima continuam ativas e trocam para a apuração sozinhas.
-  if (noData && cycle.year === currentYear()) {
+  if (noData && !runoffNational && cycle.year === currentYear()) {
     return <CandidatesExplorer cycle={cycle} ids={ids} office={office} header={header} />
   }
 
@@ -79,7 +89,9 @@ export function NationalExplorer({ cycle, ids, office, turn, header }: Props) {
       <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-10 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-12">
         <div className="fade-up space-y-7">
           {header}
-          {noData ? (
+          {runoffNational && national1.data ? (
+            <RunoffPreview cycle={cycle} first={national1.data} place="Brasil" />
+          ) : noData ? (
             <EmptyState icon={<Clock className="h-7 w-7" />} title="Resultados ainda não divulgados">
               O TSE começa a divulgar a apuração às 17h (Brasília) do dia da votação. A página se atualiza sozinha.
             </EmptyState>
@@ -102,7 +114,7 @@ export function NationalExplorer({ cycle, ids, office, turn, header }: Props) {
             <div className="space-y-6">
               {regional && <RegionLabel region={region} ufs={ufsInView.length} loaded={Object.values(inView).filter(Boolean).length} />}
               {regional && <SectionsProgress result={regional} />}
-              <PartyTally byUf={inView} office={office} />
+              <PartyTally byUf={inView} office={office} runoff={ufsInView.filter((u) => pendingOf(u.sigla)).length} />
             </div>
           )}
         </div>
@@ -120,7 +132,7 @@ export function NationalExplorer({ cycle, ids, office, turn, header }: Props) {
             focus={focus}
             src="/geo/br-uf.json"
             label={`Mapa do Brasil com o candidato à frente em cada estado: ${office.name}, ${turn}º turno`}
-            fill={(code) => leaderColor(byUf[UF_BY_IBGE[code]?.sigla])}
+            fill={(code) => (pendingOf(UF_BY_IBGE[code]?.sigla) ? 'var(--runoff)' : leaderColor(byUf[UF_BY_IBGE[code]?.sigla]))}
             name={(code) => {
               const uf = UF_BY_IBGE[code]
               const lead = byUf[uf.sigla]?.candidates[0]
@@ -130,6 +142,12 @@ export function NationalExplorer({ cycle, ids, office, turn, header }: Props) {
             onSelect={(code) => navigate(stateHref(UF_BY_IBGE[code].sigla))}
           />
           <figcaption>
+            {runoffNational && <p className="mb-2 text-sm text-muted">Mapa do 1º turno: o mais votado em cada estado.</p>}
+            {!isNational && turn === 2 && UFS.some((u) => pendingOf(u.sigla)) && (
+              <p className="mb-2 inline-flex items-center gap-2 text-sm text-muted">
+                <span className="h-3 w-3 rounded-sm bg-[var(--runoff)]" aria-hidden /> 2º turno em {fmtDateLong(cycle.dates[2])}
+              </p>
+            )}
             <PartyLegend byUf={inView} />
           </figcaption>
         </figure>
@@ -151,7 +169,7 @@ export function NationalExplorer({ cycle, ids, office, turn, header }: Props) {
             )
           }
         />
-        <StateCards ufs={ufsInView} byUf={byUf} href={stateHref} showStatus={office.scope === 'uf'} turn={turn} />
+        <StateCards ufs={ufsInView} byUf={byUf} href={stateHref} showStatus={office.scope === 'uf'} turn={turn} pendingOf={pendingOf} />
         {region === 'Brasil' && exterior.data && <ExteriorCard result={exterior.data} />}
       </section>
     </div>
@@ -221,16 +239,25 @@ function countByParty(byUf: ByUf) {
   return [...counts.entries()].sort((a, b) => b[1] - a[1])
 }
 
+function countElectedByParty(byUf: ByUf) {
+  const m = new Map<string, number>()
+  for (const r of Object.values(byUf)) {
+    for (const c of r?.candidates ?? []) if (c.elected) m.set(c.party, (m.get(c.party) ?? 0) + 1)
+  }
+  return [...m.entries()].sort((a, b) => b[1] - a[1])
+}
+
 function PartyLegend({ byUf }: { byUf: ByUf }) {
   const counts = countByParty(byUf)
   if (!counts.length) return null
+  const done = Object.values(byUf).every((r) => !r || r.final)
   return (
     <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-ink-2">
       {counts.map(([party, n]) => (
         <span key={party} className="inline-flex items-center gap-2">
           <span className="h-3 w-3 rounded-sm" style={{ background: partyColor(party) }} aria-hidden />
           <span>
-            <strong className="font-semibold text-ink">{party}</strong> à frente em {n} {n === 1 ? 'UF' : 'UFs'}
+            <strong className="font-semibold text-ink">{party}</strong> {done ? '' : 'à frente '}em {n} {n === 1 ? 'UF' : 'UFs'}
           </span>
         </span>
       ))}
@@ -239,19 +266,31 @@ function PartyLegend({ byUf }: { byUf: ByUf }) {
   )
 }
 
-function PartyTally({ byUf, office }: { byUf: ByUf; office: Office }) {
-  const counts = countByParty(byUf)
+function PartyTally({ byUf, office, runoff = 0 }: { byUf: ByUf; office: Office; runoff?: number }) {
+  const done = Object.values(byUf).every((r) => !r || r.final)
+  // Apuração encerrada: conta só os eleitos; durante a apuração, quem está à frente.
+  const counts = done ? countElectedByParty(byUf) : countByParty(byUf)
   const elected = Object.values(byUf).reduce((n, r) => n + (r?.candidates.filter((c) => c.elected).length ?? 0), 0)
-  if (!counts.length) return <ScoreboardSkeleton />
-  const max = counts[0][1]
+  if (!counts.length && !runoff) return <ScoreboardSkeleton />
+  const max = counts[0]?.[1] ?? 1
+  const plural = elected === 1 ? '' : 'es'
   return (
     <div>
       <p className="text-ink-2">
         <span className="text-4xl font-semibold tracking-tight text-ink tabular">{elected}</span>{' '}
         {office.name.toLowerCase()}
-        {elected === 1 ? '' : 'es'} eleito{elected === 1 ? '' : 's'} até agora.
+        {plural} eleito{elected === 1 ? '' : 's'}
+        {done ? (runoff ? ' no 1º turno.' : '.') : ' até agora.'}
       </p>
-      <p className="mt-6 mb-3 text-sm font-medium text-muted">Estados em que cada partido está à frente</p>
+      {runoff > 0 && (
+        <p className="mt-2 inline-flex items-center gap-2 text-sm text-ink-2">
+          <span className="h-3 w-3 rounded-sm bg-[var(--runoff)]" aria-hidden />
+          {runoff} {runoff === 1 ? 'estado decide' : 'estados decidem'} no 2º turno
+        </p>
+      )}
+      <p className="mt-6 mb-3 text-sm font-medium text-muted">
+        {done ? `${office.name}${plural} eleito${elected === 1 ? '' : 's'} por partido` : 'Estados em que cada partido está à frente'}
+      </p>
       <ul className="space-y-2.5">
         {counts.map(([party, n]) => (
           <li key={party} className="grid grid-cols-[7rem_1fr_2rem] items-center gap-3">
@@ -279,21 +318,25 @@ function StateCards({
   href,
   showStatus,
   turn,
+  pendingOf,
 }: {
   ufs: typeof UFS
   byUf: ByUf
   href: (uf: string) => string
   showStatus: boolean
   turn: Turn
+  pendingOf: (uf: string) => ResultSummary | undefined
 }) {
   return (
     <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {ufs.map((uf, i) => {
-        const r = byUf[uf.sigla]
-        const top = r?.candidates.slice(0, 2) ?? []
+        const pending = pendingOf(uf.sigla)
+        const r = byUf[uf.sigla] ?? pending
+        const top = pending ? pending.candidates.filter((c) => c.runoff).slice(0, 2) : (r?.candidates.slice(0, 2) ?? [])
         const lead = top[0]
-        const note =
-          r && r.turn === 1 && turn === 2
+        const note = pending
+          ? '2º turno'
+          : r && r.turn === 1 && turn === 2
             ? 'Decidido no 1º turno'
             : showStatus && lead
               ? lead.elected
@@ -302,7 +345,7 @@ function StateCards({
                   ? 'Vai ao 2º turno'
                   : ''
               : ''
-        const margin = lead && top[1] ? lead.pct - top[1].pct : undefined
+        const margin = !pending && lead && top[1] ? lead.pct - top[1].pct : undefined
         return (
           <li key={uf.sigla} className="fade-up" style={{ animationDelay: `${Math.min(i, 12) * 35}ms` }}>
             <Link

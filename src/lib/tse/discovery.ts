@@ -35,6 +35,8 @@ export function parseElectionConfig(raw: RawElectionConfig, year: number): Elect
       const level = levelFromOffices(e) ?? LEVEL_PATTERNS.find(([, re]) => re.test(e.nm))?.[0]
       if (!level || (turn !== 1 && turn !== 2)) continue
       ids[turn] = { ...ids[turn], [level]: e.cd }
+      // O 1º turno já informa o código do 2º (cdt2): a eleição de 2º turno existe desde então.
+      if (turn === 1 && e.cdt2) ids[2] = { ...ids[2], [level]: e.cdt2 }
     }
   }
   return Object.keys(ids).length ? ids : undefined

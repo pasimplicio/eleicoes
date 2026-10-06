@@ -78,9 +78,15 @@ interface Target {
   turn: Turn
 }
 
+/** O 1º turno terminou sem eleito e com finalistas: a disputa segue no 2º turno. */
+export function isRunoffPending(r?: ResultSummary | null): boolean {
+  return Boolean(r && !r.candidates.some((c) => c.elected) && r.candidates.some((c) => c.runoff))
+}
+
 /**
- * Resultado de uma abrangência (br, UF ou município). No 2º turno, abrangências sem
- * segundo turno (ex.: UF decidida no 1º) caem automaticamente para o 1º turno.
+ * Resultado de uma abrangência (br, UF ou município). No 2º turno, abrangências decididas
+ * no 1º turno mostram o resultado do 1º; onde há 2º turno ainda sem arquivo, devolve null
+ * (nunca os números do 1º turno no lugar do 2º).
  */
 export function resultQuery({ cycle, ids, office, turn }: Target, abr: string) {
   const ele2 = turn === 2 ? electionId(ids, office, 2) : undefined
@@ -99,13 +105,25 @@ export function resultQuery({ cycle, ids, office, turn }: Target, abr: string) {
         }
       }
       try {
-        return await fetchSimplified(cycle, ele1!, office, abr)
+        const first = await fetchSimplified(cycle, ele1!, office, abr)
+        return ele2 && isRunoffPending(first) ? null : first
       } catch (err) {
         if (notFound(err)) return null // ainda não publicado
         throw err
       }
     },
   })
+}
+
+/** No 2º turno sem arquivo publicado: a abrangência-mãe (Brasil ou UF) vai ao 2º turno? */
+async function parentRunoffPending(cycle: Cycle, ids: ElectionIds | undefined, office: Office, uf: string) {
+  const ele1 = electionId(ids, office, 1)
+  if (!ele1) return false
+  try {
+    return isRunoffPending(await fetchSimplified(cycle, ele1, office, office.scope === 'br' ? 'br' : uf))
+  } catch {
+    return false
+  }
 }
 
 export function useResult(target: Target, abr: string) {
@@ -139,6 +157,9 @@ export function useCityResult(target: Target, uf: string, mun: string | undefine
       const candidates = [turn === 2 ? electionId(ids, office, 2) : undefined, electionId(ids, office, 1)]
       for (const ele of candidates) {
         if (!ele) continue
+        if (turn === 2 && ele === electionId(ids, office, 1) && candidates[0] && (await parentRunoffPending(cycle, ids, office, ufl))) {
+          return null
+        }
         try {
           if (usesUnified(cycle.year)) return await fetchSimplified(cycle, ele, office, `${ufl}${mun}`)
           const votes = await getJson<RawVotes>(votesPath(cycle.tse, ele, office.code, ufl, mun))
@@ -216,6 +237,9 @@ export function useMunicipalLeaders(target: Target, uf: string) {
       const eles = [turn === 2 ? electionId(ids, office, 2) : undefined, electionId(ids, office, 1)]
       for (const ele of eles) {
         if (!ele) continue
+        if (turn === 2 && ele === electionId(ids, office, 1) && eles[0] && (await parentRunoffPending(cycle, ids, office, ufl))) {
+          return null
+        }
         try {
           const qs = new URLSearchParams({ ciclo: cycle.tse, ele, cargo: office.code, uf: ufl })
           const summary = await getJson<MunicipalSummary>(`/api/municipios?${qs}`)

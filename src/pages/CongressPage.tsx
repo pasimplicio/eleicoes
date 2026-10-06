@@ -156,14 +156,18 @@ function Congress({ cycle, ids, turn }: { cycle: Cycle; ids?: ElectionIds; turn:
 
   // Governadores: só os eleitos contam para as forças; estados com 2º turno ficam à parte,
   // sem serem atribuídos a quem liderou o 1º turno.
-  const gov = useUfResults({ cycle, ids, office: findOffice(cycle, 'governador')!, turn })
+  const govOffice = findOffice(cycle, 'governador')!
+  const gov = useUfResults({ cycle, ids, office: govOffice, turn })
+  // No 2º turno, antes do arquivo sair, o estado segue como "2º turno" pelo resultado do 1º.
+  const gov1 = useUfResults({ cycle, ids, office: govOffice, turn: 1 })
+  const govBy = Object.fromEntries(UFS.map((u) => [u.sigla, gov.byUf[u.sigla] ?? gov1.byUf[u.sigla]])) as Record<string, ResultSummary | undefined>
   const governors: Seat[] = UFS.flatMap((uf) => {
-    const lead = gov.byUf[uf.sigla]?.candidates[0]
+    const lead = govBy[uf.sigla]?.candidates[0]
     return lead?.elected ? [{ party: lead.party, uf: uf.sigla }] : []
   })
-  const govRunoff = UFS.filter((uf) => isRunoff(gov.byUf[uf.sigla])).length
+  const govRunoff = UFS.filter((uf) => isRunoff(govBy[uf.sigla])).length
 
-  const nothing = !depLoaded.length && !sen.loaded && !gov.loaded
+  const nothing = !depLoaded.length && !sen.loaded && !gov.loaded && !gov1.loaded
   const loading = depResults.some((r) => r.isLoading) || sen.loading || gov.loading
 
   return (
@@ -247,7 +251,7 @@ function Congress({ cycle, ids, turn }: { cycle: Cycle; ids?: ElectionIds; turn:
               year={cycle.year}
               final={senFinal}
             />
-            <Governadores modo={modo} alliances={alliances} cycle={cycle} turn={turn} byUf={gov.byUf} governors={governors} />
+            <Governadores modo={modo} alliances={alliances} cycle={cycle} turn={turn} byUf={govBy} governors={governors} />
           </div>
         )}
       </Container>

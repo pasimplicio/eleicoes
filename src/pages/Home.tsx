@@ -5,7 +5,7 @@ import { CandidatesExplorer } from '../components/candidates/CandidatesExplorer'
 import { Countdown } from '../components/Countdown'
 import { MoreLink, NationalExplorer } from '../components/results/NationalExplorer'
 import { Container, LiveBadge, Segmented, SectionHeading } from '../components/ui'
-import { getCycle, KNOWN_IDS, type Turn } from '../config/elections'
+import { getCycle, KNOWN_IDS, todayBrasilia, type Turn } from '../config/elections'
 import { useSnapshot } from '../lib/candidates'
 import { fmtDateLong } from '../lib/format'
 import { defaultTurn, resultsStart, useFeaturedCycle } from '../lib/phase'
@@ -49,11 +49,14 @@ export function Home() {
     setSearch(next, { replace: true, preventScrollReset: true })
   }
 
+  const runoffAhead = year === f.cycle.year && turn === 2 && todayBrasilia() <= f.cycle.dates[2]
   const kicker = upcoming
     ? `Eleições ${cycle.year}, candidaturas registradas`
     : year === f.cycle.year && f.live
       ? null
-      : `Resultado final, eleições de ${year}`
+      : runoffAhead
+        ? `Eleições ${cycle.year}, 2º turno em ${fmtDateLong(cycle.dates[2])}`
+        : `Resultado final, eleições de ${year}`
 
   const header = (
     <div>
@@ -61,7 +64,9 @@ export function Home() {
       <h1 className="mt-2 font-serif text-[2.5rem] leading-[1.05] font-semibold tracking-tight sm:text-5xl">
         {upcoming
           ? (UPCOMING_TITLE[office.slug] ?? `Candidatos a ${office.name.toLowerCase()}`)
-          : year === f.cycle.year
+          : runoffAhead
+            ? `2º turno para ${office.name.toLowerCase()}`
+            : year === f.cycle.year
             ? `Apuração para ${office.name.toLowerCase()}`
             : `O voto para ${office.name.toLowerCase()} em ${year}`}
       </h1>
