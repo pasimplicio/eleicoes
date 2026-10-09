@@ -279,6 +279,10 @@ function SectionsMap({
           fillOpacity: 0.9,
         })
         marker.bindPopup('', { maxWidth: 320, minWidth: 260 })
+        marker.bindTooltip(
+          `<b>Seção ${s[0]}</b> · Zona ${zona}${agregadas.length ? ` <span>(inclui ${agregadas.join(', ')})</span>` : ''}<br><span>${esc(titleish(nome))}</span>`,
+          { direction: 'top', offset: [0, -8], className: 'secao-tip' },
+        )
         marker.on('popupopen', (e) => openSection(e.popup, { nome, endereco, bairro, zona, secao: s[0], aptos: s[1], agregadas }))
         markers.push(marker)
       }
