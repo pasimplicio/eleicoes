@@ -1,0 +1,222 @@
+{
+  "fonte": "Senado Federal, dados abertos (senador/lista/atual)",
+  "coletadoEm": "2026-10-09",
+  "senadores": [
+    {
+      "nome": "Alan Rick",
+      "uf": "AC",
+      "partido": "REPUBLICANOS",
+      "foto": "https://www.senado.leg.br/senadores/img/fotos-oficiais/senador5672.jpg",
+      "suplente": "Gemil Junior",
+      "fimMandato": "2031-01-31"
+    },
+    {
+      "nome": "Renan Filho",
+      "uf": "AL",
+      "partido": "MDB",
+      "foto": "https://www.senado.leg.br/senadores/img/fotos-oficiais/senador5207.jpg",
+      "suplente": "Fernando Farias",
+      "fimMandato": "2031-01-31"
+    },
+    {
+      "nome": "Omar Aziz",
+      "uf": "AM",
+      "partido": "PSD",
+      "foto": "https://www.senado.leg.br/senadores/img/fotos-oficiais/senador5525.jpg",
+      "suplente": "Cheila Moreira",
+      "fimMandato": "2031-01-31"
+    },
+    {
+      "nome": "Davi Alcolumbre",
+      "uf": "AP",
+      "partido": "UNIÃO",
+      "foto": "https://www.senado.leg.br/senadores/img/fotos-oficiais/senador3830.jpg",
+      "suplente": "Josiel",
+      "fimMandato": "2031-01-31"
+    },
+    {
+      "nome": "Otto Alencar",
+      "uf": "BA",
+      "partido": "PSD",
+      "foto": "https://www.senado.leg.br/senadores/img/fotos-oficiais/senador5523.jpg",
+      "suplente": "Terence Lessa",
+      "fimMandato": "2031-01-31"
+    },
+    {
+      "nome": "Camilo Santana",
+      "uf": "CE",
+      "partido": "PT",
+      "foto": "https://www.senado.leg.br/senadores/img/fotos-oficiais/senador6336.jpg",
+      "suplente": "Augusta Brito",
+      "fimMandato": "2031-01-31"
+    },
+    {
+      "nome": "Damares Alves",
+      "uf": "DF",
+      "partido": "REPUBLICANOS",
+      "foto": "https://www.senado.leg.br/senadores/img/fotos-oficiais/senador6335.jpg",
+      "suplente": "Manoel Arruda",
+      "fimMandato": "2031-01-31"
+    },
+    {
+      "nome": "Magno Malta",
+      "uf": "ES",
+      "partido": "PL",
+      "foto": "https://www.senado.leg.br/senadores/img/fotos-oficiais/senador631.jpg",
+      "suplente": "Marcinha Macedo",
+      "fimMandato": "2031-01-31"
+    },
+    {
+      "nome": "Wilder Morais",
+      "uf": "GO",
+      "partido": "PL",
+      "foto": "https://www.senado.leg.br/senadores/img/fotos-oficiais/senador5070.jpg",
+      "suplente": "Izaura Cardoso",
+      "fimMandato": "2031-01-31"
+    },
+    {
+      "nome": "Ana Paula Lobato",
+      "uf": "MA",
+      "partido": "PSB",
+      "foto": "https://www.senado.leg.br/senadores/img/fotos-oficiais/senador6358.jpg",
+      "suplente": null,
+      "fimMandato": "2031-01-31"
+    },
+    {
+      "nome": "Cleitinho",
+      "uf": "MG",
+      "partido": "REPUBLICANOS",
+      "foto": "https://www.senado.leg.br/senadores/img/fotos-oficiais/senador6337.jpg",
+      "suplente": "Alex Diniz",
+      "fimMandato": "2031-01-31"
+    },
+    {
+      "nome": "Tereza Cristina",
+      "uf": "MS",
+      "partido": "PP",
+      "foto": "https://www.senado.leg.br/senadores/img/fotos-oficiais/senador5736.jpg",
+      "suplente": "Tenente Portela",
+      "fimMandato": "2031-01-31"
+    },
+    {
+      "nome": "Wellington Fagundes",
+      "uf": "MT",
+      "partido": "PL",
+      "foto": "https://www.senado.leg.br/senadores/img/fotos-oficiais/senador1173.jpg",
+      "suplente": "Mauro Carvalho Junior",
+      "fimMandato": "2031-01-31"
+    },
+    {
+      "nome": "Beto Faro",
+      "uf": "PA",
+      "partido": "PT",
+      "foto": "https://www.senado.leg.br/senadores/img/fotos-oficiais/senador4639.jpg",
+      "suplente": "Josenir",
+      "fimMandato": "2031-01-31"
+    },
+    {
+      "nome": "Efraim Filho",
+      "uf": "PB",
+      "partido": "PL",
+      "foto": "https://www.senado.leg.br/senadores/img/fotos-oficiais/senador4642.jpg",
+      "suplente": "André Amaral",
+      "fimMandato": "2031-01-31"
+    },
+    {
+      "nome": "Teresa Leitão",
+      "uf": "PE",
+      "partido": "PT",
+      "foto": "https://www.senado.leg.br/senadores/img/fotos-oficiais/senador6338.jpg",
+      "suplente": "Silvio Costa",
+      "fimMandato": "2031-01-31"
+    },
+    {
+      "nome": "Jussara Lima",
+      "uf": "PI",
+      "partido": "PSD",
+      "foto": "https://www.senado.leg.br/senadores/img/fotos-oficiais/senador6369.jpg",
+      "suplente": null,
+      "fimMandato": "2031-01-31"
+    },
+    {
+      "nome": "Sergio Moro",
+      "uf": "PR",
+      "partido": "PL",
+      "foto": "https://www.senado.leg.br/senadores/img/fotos-oficiais/senador6331.jpg",
+      "suplente": "Luis Felipe Cunha",
+      "fimMandato": "2031-01-31"
+    },
+    {
+      "nome": "Romário",
+      "uf": "RJ",
+      "partido": "S/Partido",
+      "foto": "https://www.senado.leg.br/senadores/img/fotos-oficiais/senador5322.jpg",
+      "suplente": "Bruno Bonetti",
+      "fimMandato": "2031-01-31"
+    },
+    {
+      "nome": "Rogerio Marinho",
+      "uf": "RN",
+      "partido": "PL",
+      "foto": "https://www.senado.leg.br/senadores/img/fotos-oficiais/senador4694.jpg",
+      "suplente": "Flavio Azevedo",
+      "fimMandato": "2031-01-31"
+    },
+    {
+      "nome": "Jaime Bagattoli",
+      "uf": "RO",
+      "partido": "PL",
+      "foto": "https://www.senado.leg.br/senadores/img/fotos-oficiais/senador6340.jpg",
+      "suplente": "Pastor Valadares",
+      "fimMandato": "2031-01-31"
+    },
+    {
+      "nome": "Dr. Hiran",
+      "uf": "RR",
+      "partido": "PP",
+      "foto": "https://www.senado.leg.br/senadores/img/fotos-oficiais/senador5793.jpg",
+      "suplente": "Jr Rodrigues",
+      "fimMandato": "2031-01-31"
+    },
+    {
+      "nome": "Hamilton Mourão",
+      "uf": "RS",
+      "partido": "REPUBLICANOS",
+      "foto": "https://www.senado.leg.br/senadores/img/fotos-oficiais/senador6341.jpg",
+      "suplente": "Liziane Bayer",
+      "fimMandato": "2031-01-31"
+    },
+    {
+      "nome": "Jorge Seif",
+      "uf": "SC",
+      "partido": "PL",
+      "foto": "https://www.senado.leg.br/senadores/img/fotos-oficiais/senador6342.jpg",
+      "suplente": "Hermes Klann",
+      "fimMandato": "2031-01-31"
+    },
+    {
+      "nome": "Laércio Oliveira",
+      "uf": "SE",
+      "partido": "PP",
+      "foto": "https://www.senado.leg.br/senadores/img/fotos-oficiais/senador4811.jpg",
+      "suplente": "Janier",
+      "fimMandato": "2031-01-31"
+    },
+    {
+      "nome": "Astronauta Marcos Pontes",
+      "uf": "SP",
+      "partido": "PL",
+      "foto": "https://www.senado.leg.br/senadores/img/fotos-oficiais/senador6009.jpg",
+      "suplente": "Professor Alberto",
+      "fimMandato": "2031-01-31"
+    },
+    {
+      "nome": "Professora Dorinha Seabra",
+      "uf": "TO",
+      "partido": "UNIÃO",
+      "foto": "https://www.senado.leg.br/senadores/img/fotos-oficiais/senador5386.jpg",
+      "suplente": "Professora Lu",
+      "fimMandato": "2031-01-31"
+    }
+  ]
+}

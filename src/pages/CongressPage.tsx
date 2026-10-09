@@ -3,7 +3,7 @@
 // ciclo) e governadores (eleitos e estados com 2º turno). A correlação de forças agrupa os partidos pela
 // aliança presidencial que registraram no TSE no 1º turno (lib/tse/alliances.ts).
 import { Clock } from '@phosphor-icons/react'
-import { useQueries } from '@tanstack/react-query'
+import { useQueries, useQuery } from '@tanstack/react-query'
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChoroplethMap } from '../components/map/ChoroplethMap'
@@ -26,7 +26,7 @@ const CAMARA = 513
 const RUNOFF_ID = '2t'
 
 /** Faixas em cinza: número em tinta escura, não em branco. */
-const NEUTRAL = new Set([NONE_ID, OTHER_ID, RUNOFF_ID, '-'])
+const NEUTRAL = new Set([NONE_ID, OTHER_ID, RUNOFF_ID, '-', 'suplente'])
 
 /** Governo decidido no 2º turno: 1º turno encerrado, sem eleito e com finalistas. */
 const isRunoff = (r?: ResultSummary) => Boolean(r && !r.candidates[0]?.elected && r.candidates.some((c) => c.runoff))
@@ -40,8 +40,36 @@ const CAMARA_QUORUNS = [
   { seats: 342, label: '2/3' },
 ]
 
+/** Quóruns do Senado: maioria absoluta, três quintos (PEC) e dois terços. */
+const SENADO_QUORUNS = [
+  { seats: 41, label: 'Maioria absoluta' },
+  { seats: 49, label: '3/5, emenda constitucional' },
+  { seats: 54, label: '2/3' },
+]
+
+/** Vaga de senador que vai para o suplente, cujo partido o Senado ainda não informa. */
+const PENDING = 'suplente'
+const PENDING_GROUP = { id: PENDING, label: 'Suplente a confirmar', color: 'var(--color-map-empty)' }
+
 /** Vagas de senador por UF: dois terços (2) e um terço (1) alternam a cada 4 anos. */
 const senateSeatsPerUf = (year: number) => ((year - 2018) % 8 === 0 ? 2 : 1)
+
+/** Senador que continua no mandato, no retrato dos dados abertos do Senado. */
+interface Continuing {
+  nome: string
+  uf: string
+  partido: string
+  suplente: string | null
+}
+
+type SenSeat = Seat & { name: string; note: string }
+
+const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().trim()
+/** Mesmo nome na urna e no Senado ("Cleitinho" e "Cleitinho Azevedo", por exemplo). */
+const sameName = (a: string, b: string) => {
+  const [x, y] = [norm(a), norm(b)]
+  return x === y || x.includes(y) || y.includes(x)
+}
 
 type Modo = 'partidos' | 'aliancas'
 
@@ -61,7 +89,15 @@ interface Group {
 }
 
 /** Agrupa cadeiras por partido (maior primeiro) ou por aliança (ordem fixa dos blocos). */
-function groupSeats(seats: Seat[], modo: Modo, alliances?: Alliances | null): Group[] {
+function groupSeats(all: Seat[], modo: Modo, alliances?: Alliances | null): Group[] {
+  // Vagas de suplente sem partido conhecido ficam num grupo próprio, ao final.
+  const pending = all.filter((s) => s.party === PENDING).length
+  const seats = all.filter((s) => s.party !== PENDING)
+  const groups = groupKnown(seats, modo, alliances)
+  return pending ? [...groups, { ...PENDING_GROUP, seats: pending }] : groups
+}
+
+function groupKnown(seats: Seat[], modo: Modo, alliances?: Alliances | null): Group[] {
   if (modo === 'aliancas' && alliances) {
     const count = new Map<string, number>()
     const byParty = new Map<string, Map<string, number>>()
@@ -182,7 +218,35 @@ function Congress({ cycle, ids, turn }: { cycle: Cycle; ids?: ElectionIds; turn:
   })
   const govRunoff = UFS.filter((uf) => isRunoff(govBy[uf.sigla])).length
 
-  const nothing = !depLoaded.length && !sen.loaded && !gov.loaded && !gov1.loaded
+  // Senado na nova legislatura: eleitos no ciclo + quem continua no mandato (dados abertos
+  // do Senado). Senador que continua e foi eleito governador deixa a vaga para o suplente.
+  const continuingQuery = useQuery({
+    queryKey: ['senado-continuam', cycle.year + 1],
+    staleTime: Infinity,
+    queryFn: async () => {
+      const res = await fetch(`/data/senado-continuam-${cycle.year + 1}.json`)
+      if (!res.ok || !res.headers.get('content-type')?.includes('json')) return null
+      return (await res.json()) as { coletadoEm: string; senadores: Continuing[] }
+    },
+  })
+  const continuing: SenSeat[] = (continuingQuery.data?.senadores ?? []).map((s) => {
+    const r = govBy[s.uf]
+    const won = r?.candidates.find((c) => c.elected && sameName(c.name, s.nome))
+    if (won) {
+      return { party: PENDING, uf: s.uf, name: s.suplente ?? 'Suplente', note: `Suplente de ${s.nome}, eleito governador` }
+    }
+    const inRunoff = isRunoff(r) && r!.candidates.some((c) => c.runoff && sameName(c.name, s.nome))
+    return {
+      party: s.partido,
+      uf: s.uf,
+      name: s.nome,
+      note: inRunoff ? 'Mandato até 2031; disputa o 2º turno para governador' : 'Mandato até 2031',
+    }
+  })
+  const senElected: SenSeat[] = senators.map((s) => ({ party: s.party, uf: s.uf, name: s.name, note: s.elected ? `Eleito em ${cycle.year}` : `Mais votado em ${cycle.year}` }))
+  const senate: SenSeat[] = continuing.length ? [...senElected, ...continuing] : []
+
+  const nothing =!depLoaded.length && !sen.loaded && !gov.loaded && !gov1.loaded
   const loading = depResults.some((r) => r.isLoading) || sen.loading || gov.loading
 
   return (
@@ -242,6 +306,7 @@ function Congress({ cycle, ids, turn }: { cycle: Cycle; ids?: ElectionIds; turn:
               alliances={alliances}
               deputies={deputies}
               senators={senators}
+              senate={senate}
               governors={governors}
               govRunoff={govRunoff}
               senTotal={senTotal}
@@ -261,6 +326,8 @@ function Congress({ cycle, ids, turn }: { cycle: Cycle; ids?: ElectionIds; turn:
               modo={modo}
               alliances={alliances}
               senators={senators}
+              senate={senate}
+              collectedAt={continuingQuery.data?.coletadoEm}
               total={senTotal}
               perUf={perUf}
               year={cycle.year}
@@ -280,6 +347,7 @@ function Forcas({
   alliances,
   deputies,
   senators,
+  senate,
   governors,
   govRunoff,
   senTotal,
@@ -290,6 +358,7 @@ function Forcas({
   alliances?: Alliances | null
   deputies: Seat[]
   senators: Seat[]
+  senate: SenSeat[]
   governors: Seat[]
   govRunoff: number
   senTotal: number
@@ -307,7 +376,10 @@ function Forcas({
     return m
   }
   const dep = count(deputies)
-  const sen = count(senators)
+  // Senado: a composição da nova legislatura (81) quando há o retrato do Senado; senão, os eleitos.
+  const full = senate.length > 0
+  const sen = count((full ? senate : senators).filter((s) => s.party !== PENDING))
+  const senPending = full ? senate.filter((s) => s.party === PENDING).length : 0
   const gov = count(governors)
   const seg = (m: Map<string, number>) =>
     alliances.blocs.map((b) => ({ id: b.id, label: b.short, color: b.color, value: m.get(b.id) ?? 0 }))
@@ -339,12 +411,22 @@ function Forcas({
           segments={seg(dep)}
           thresholds={CAMARA_QUORUNS}
         />
-        <ForceBar
-          title={`Senado Federal, ${senTotal} senadores eleitos em ${year}`}
-          caption={`As outras ${SENADO - senTotal} cadeiras são dos senadores eleitos em ${year - 4}`}
-          total={senTotal}
-          segments={seg(sen)}
-        />
+        {full ? (
+          <ForceBar
+            title={`Senado Federal a partir de ${year + 1}, ${SENADO} senadores`}
+            caption={`${senTotal} eleitos em ${year} e ${SENADO - senTotal} com mandato até ${year + 5}`}
+            total={SENADO}
+            segments={[...seg(sen), { ...PENDING_GROUP, value: senPending }]}
+            thresholds={SENADO_QUORUNS}
+          />
+        ) : (
+          <ForceBar
+            title={`Senado Federal, ${senTotal} senadores eleitos em ${year}`}
+            caption={`As outras ${SENADO - senTotal} cadeiras são dos senadores eleitos em ${year - 4}`}
+            total={senTotal}
+            segments={seg(sen)}
+          />
+        )}
         <ForceBar
           title="Governos estaduais"
           caption={govRunoff ? `${GOVERNOS - govRunoff} eleitos no 1º turno; ${govRunoff} a decidir no 2º turno` : 'Governadores eleitos'}
@@ -545,10 +627,14 @@ function UfFilter({ value, onChange }: { value: string; onChange: (v: string) =>
 
 // ------------------------------------------------------------------ Senado
 
+type SenView = 'legislatura' | 'eleitos'
+
 function Senado({
   modo,
   alliances,
   senators,
+  senate,
+  collectedAt,
   total,
   perUf,
   year,
@@ -557,46 +643,91 @@ function Senado({
   modo: Modo
   alliances?: Alliances | null
   senators: (Seat & { name: string; elected: boolean; pct: number })[]
+  /** Composição da nova legislatura (eleitos + quem continua); vazia sem o retrato do Senado. */
+  senate: SenSeat[]
+  collectedAt?: string
   total: number
   perUf: number
   year: number
   final: boolean
 }) {
-  const groups = useMemo(() => groupSeats(senators, modo, alliances), [senators, modo, alliances])
+  const full = senate.length > 0
+  const [view, setView] = useState<SenView>('legislatura')
+  const showFull = full && view === 'legislatura'
+  const seats: SenSeat[] = showFull
+    ? senate
+    : senators.map((s) => ({ party: s.party, uf: s.uf, name: s.name, note: s.elected ? 'Eleito' : fmtPct(s.pct) }))
+  const shownTotal = showFull ? SENADO : total
+  const groups = useMemo(() => groupSeats(seats, modo, alliances), [seats, modo, alliances])
   const [hover, setHover] = useState<string>()
-  const keyOf = (party: string) => (modo === 'aliancas' && alliances ? alliances.blocOf(party).id : party)
+  const keyOf = (party: string) =>
+    party === PENDING ? PENDING : modo === 'aliancas' && alliances ? alliances.blocOf(party).id : party
+  const pending = senate.filter((s) => s.party === PENDING)
+
   return (
     <section aria-labelledby="senado" className="scroll-mt-36">
-      <SectionHeading id="senado" title="Senado Federal" />
+      <SectionHeading
+        id="senado"
+        title="Senado Federal"
+        action={
+          full && (
+            <Segmented<SenView>
+              label="Composição do Senado"
+              value={view}
+              onChange={setView}
+              options={[
+                { value: 'legislatura', label: `A partir de ${year + 1}` },
+                { value: 'eleitos', label: `Eleitos em ${year}` },
+              ]}
+            />
+          )
+        }
+      />
       <p className="mb-8 max-w-3xl text-sm leading-relaxed text-muted">
-        Os {total} senadores eleitos em {year}, {perUf === 2 ? 'dois' : 'um'} por estado, renovam{' '}
-        {perUf === 2 ? 'dois terços' : 'um terço'} do Senado.{final ? '' : ' Totalização ainda não concluída em todos os estados.'}{' '}
-        As outras {SENADO - total} cadeiras seguem com os senadores eleitos em {year - 4}, que não entram nesta conta.
+        {showFull ? (
+          <>
+            As {SENADO} cadeiras a partir de {year + 1}: os {total} senadores eleitos em {year} e os {SENADO - total} que
+            seguem com mandato até {year + 5}, com o partido atual informado pelo Senado
+            {collectedAt ? ` em ${collectedAt.split('-').reverse().join('/')}` : ''}.
+            {pending.length > 0 &&
+              ` ${pending.length} ${pending.length === 1 ? 'senador foi eleito governador e deixa' : 'senadores foram eleitos governadores e deixam'} a vaga para o suplente, cujo partido o Senado ainda não informa.`}
+          </>
+        ) : (
+          <>
+            Os {total} senadores eleitos em {year}, {perUf === 2 ? 'dois' : 'um'} por estado, renovam{' '}
+            {perUf === 2 ? 'dois terços' : 'um terço'} do Senado.{final ? '' : ' Totalização ainda não concluída em todos os estados.'}{' '}
+            As outras {SENADO - total} cadeiras seguem com os senadores eleitos em {year - 4}.
+          </>
+        )}
       </p>
       <Chamber
-        total={total}
+        key={view}
+        total={shownTotal}
         groups={groups}
-        label={`Distribuição dos ${total} senadores eleitos em ${year}`}
-        caption="eleitos"
+        label={showFull ? `Composição do Senado a partir de ${year + 1}` : `Distribuição dos ${total} senadores eleitos em ${year}`}
+        caption={showFull ? 'senadores' : 'eleitos'}
+        thresholds={showFull ? SENADO_QUORUNS : []}
         highlight={hover}
         onHighlight={setHover}
       />
       <ul className="mt-12 grid gap-x-8 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
         {UFS.map((uf) => {
-          const list = senators.filter((s) => s.uf === uf.sigla)
+          const list = seats.filter((s) => s.uf === uf.sigla)
           const dim = hover !== undefined && !list.some((s) => keyOf(s.party) === hover)
           return (
             <li key={uf.sigla} className={cn('flex items-start gap-3 border-t border-line pt-3 transition-opacity', dim && 'opacity-30')}>
               <span className="w-8 shrink-0 pt-0.5 text-sm font-semibold text-muted">{uf.sigla}</span>
-              <div className="min-w-0 flex-1 space-y-1.5">
+              <div className="min-w-0 flex-1 space-y-2">
                 {list.length ? (
                   list.map((s, i) => (
-                    <p key={s.name} className="flex items-center gap-2 text-sm">
-                      <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: groups.find((g) => g.id === keyOf(s.party))?.color ?? partyColor(s.party, i) }} aria-hidden />
-                      <span className="truncate">{s.name}</span>
-                      <span className="text-xs text-muted">{s.party}</span>
-                      <span className="ml-auto text-xs text-ink-2 tabular">{s.elected ? 'Eleito' : fmtPct(s.pct)}</span>
-                    </p>
+                    <div key={`${s.name}-${i}`} className="text-sm">
+                      <p className="flex items-center gap-2">
+                        <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: groups.find((g) => g.id === keyOf(s.party))?.color ?? partyColor(s.party, i) }} aria-hidden />
+                        <span className="truncate">{s.name}</span>
+                        <span className="text-xs text-muted">{s.party === PENDING ? 'partido a confirmar' : s.party}</span>
+                      </p>
+                      <p className="ml-[18px] text-xs text-muted">{s.note}</p>
+                    </div>
                   ))
                 ) : (
                   <p className="text-sm text-muted">Sem dados ainda</p>
