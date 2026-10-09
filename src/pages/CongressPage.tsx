@@ -56,19 +56,34 @@ interface Group {
   color: string
   seats: number
   detail?: string
+  /** Na visão por alianças: os partidos que formam o grupo, com as cadeiras de cada um. */
+  members?: { party: string; seats: number }[]
 }
 
 /** Agrupa cadeiras por partido (maior primeiro) ou por aliança (ordem fixa dos blocos). */
 function groupSeats(seats: Seat[], modo: Modo, alliances?: Alliances | null): Group[] {
   if (modo === 'aliancas' && alliances) {
     const count = new Map<string, number>()
+    const byParty = new Map<string, Map<string, number>>()
     for (const s of seats) {
       const b = alliances.blocOf(s.party)
       count.set(b.id, (count.get(b.id) ?? 0) + 1)
+      const m = byParty.get(b.id) ?? new Map<string, number>()
+      m.set(s.party, (m.get(s.party) ?? 0) + 1)
+      byParty.set(b.id, m)
     }
     return alliances.blocs
       .filter((b) => count.get(b.id))
-      .map((b) => ({ id: b.id, label: b.short, color: b.color, seats: count.get(b.id)!, detail: b.label }))
+      .map((b) => ({
+        id: b.id,
+        label: b.short,
+        color: b.color,
+        seats: count.get(b.id)!,
+        detail: b.label,
+        members: [...(byParty.get(b.id) ?? new Map<string, number>()).entries()]
+          .sort((x, y) => y[1] - x[1] || x[0].localeCompare(y[0], 'pt-BR'))
+          .map(([party, n]) => ({ party, seats: n })),
+      }))
   }
   const count = new Map<string, number>()
   for (const s of seats) count.set(s.party, (count.get(s.party) ?? 0) + 1)
@@ -819,7 +834,7 @@ function Chamber({
               aria-pressed={highlight === g.id}
               title={g.detail}
               className={cn(
-                'grid w-full cursor-pointer grid-cols-[9.5rem_1fr_2.5rem] items-center gap-3 rounded-md px-2 py-1.5 text-left text-sm transition',
+                'grid w-full cursor-pointer grid-cols-[9.5rem_1fr_2.5rem] items-center gap-x-3 gap-y-1 rounded-md px-2 py-1.5 text-left text-sm transition',
                 highlight === g.id ? 'bg-surface-2' : 'hover:bg-surface-2',
                 highlight && highlight !== g.id && 'opacity-45',
               )}
@@ -832,6 +847,16 @@ function Chamber({
                 />
               </span>
               <Count value={g.seats} className="text-right font-semibold" />
+              {g.members && g.members.length > 0 && (
+                <span className="col-span-3 text-xs leading-relaxed text-muted">
+                  {g.members.map((m, i) => (
+                    <span key={m.party} className="whitespace-nowrap">
+                      {m.party} <span className="font-semibold text-ink-2 tabular">{m.seats}</span>
+                      {i < g.members!.length - 1 && <span aria-hidden>, </span>}
+                    </span>
+                  ))}
+                </span>
+              )}
             </button>
           </li>
         ))}
