@@ -1,4 +1,4 @@
-// Menu lateral retrátil para celular e tablet (abaixo de lg). Usa <dialog> modal:
+// Menu lateral retrátil para celular, tablet e notebook pequeno (abaixo de xl). Usa <dialog> modal:
 // prende o foco, fecha com Esc, ao tocar no fundo, pelo botão ou ao escolher uma página.
 import { List, X } from '@phosphor-icons/react'
 import { useEffect, useRef } from 'react'
@@ -28,7 +28,7 @@ export function MobileMenu({ items }: { items: MenuItem[] }) {
       <button
         type="button"
         onClick={abrir}
-        className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-md text-ink transition hover:bg-surface-2 lg:hidden"
+        className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-md text-ink transition hover:bg-surface-2 xl:hidden"
         aria-label="Abrir menu"
         aria-haspopup="dialog"
       >

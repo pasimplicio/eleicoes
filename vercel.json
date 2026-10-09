@@ -74,6 +74,9 @@
     },
     "api/votos-municipio.ts": {
       "maxDuration": 60
+    },
+    "api/secao.ts": {
+      "maxDuration": 20
     }
   },
   "regions": [

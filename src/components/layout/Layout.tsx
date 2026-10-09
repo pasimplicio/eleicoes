@@ -85,6 +85,7 @@ export function Layout() {
       ? [
           { to: '/congresso', label: 'Congresso', end: false },
           { to: '/mapa-de-votos', label: 'Mapa de votos', end: false },
+          { to: '/mapa-das-secoes', label: 'Seções', end: false },
         ]
       : []),
     { to: '/sobre', label: 'Metodologia', end: false },
@@ -103,7 +104,7 @@ export function Layout() {
       <header className="sticky top-0 z-30 border-b border-line [@media(max-height:480px)]:static bg-surface/92 backdrop-blur-md supports-[not(backdrop-filter:blur(0))]:bg-surface">
         <Container className="flex h-16 items-center gap-6">
           <Wordmark />
-          <nav className="ml-auto hidden items-center lg:flex" aria-label="Principal">
+          <nav className="ml-auto hidden items-center xl:flex" aria-label="Principal">
             {nav.map((n) => (
               <NavLink
                 key={n.to}
@@ -122,7 +123,7 @@ export function Layout() {
               </NavLink>
             ))}
           </nav>
-          <div className="ml-auto flex items-center gap-1 lg:ml-0">
+          <div className="ml-auto flex items-center gap-1 xl:ml-0">
           <button
             type="button"
             onClick={toggle}
