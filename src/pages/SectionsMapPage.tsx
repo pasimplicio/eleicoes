@@ -1,6 +1,7 @@
 // Mapa das seções eleitorais (Leaflet + OpenStreetMap): um marcador por seção, no local de
 // votação informado pelo TSE. Ao clicar, a página busca o boletim de urna daquela seção
 // (api/secao) e mostra os votos para presidente no turno escolhido.
+import { Breadcrumbs } from '../components/nav/Breadcrumbs'
 import 'leaflet/dist/leaflet.css'
 import 'leaflet.markercluster/dist/MarkerCluster.css'
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
@@ -121,7 +122,8 @@ export function SectionsMapPage() {
   )
 
   return (
-    <Container className="py-8 sm:py-10">
+    <Container className="pt-6 pb-8 sm:pt-8 sm:pb-10">
+      <Breadcrumbs items={[{ label: 'Mapas' }, { label: 'Mapa das seções' }]} className="mb-6" />
       <header className="max-w-3xl">
         <p className="text-sm text-muted">Eleições gerais de {cycle.year}, presidente</p>
         <h1 className="mt-1 font-serif text-4xl leading-tight font-semibold tracking-tight sm:text-5xl">Mapa das seções</h1>

@@ -1,5 +1,7 @@
 import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { CandidatesExplorer } from '../components/candidates/CandidatesExplorer'
+import { Breadcrumbs } from '../components/nav/Breadcrumbs'
+import { OfficeTabs } from '../components/nav/OfficeTabs'
 import { ProportionalExplorer } from '../components/proportional/ProportionalExplorer'
 import { NationalExplorer } from '../components/results/NationalExplorer'
 import { Container, Segmented } from '../components/ui'
@@ -64,7 +66,11 @@ export function OfficePage() {
   const upcoming = todayBrasilia() < cycle.dates[1]
 
   return (
-    <Container className="pt-8 sm:pt-12">
+    <Container className="pt-6 sm:pt-8">
+      <div className="mb-8 space-y-4">
+        <Breadcrumbs items={[{ label: `Eleições ${cycle.year}`, to: `/?ano=${cycle.year}` }, { label: office.name }]} />
+        <OfficeTabs cycle={cycle} current={office} />
+      </div>
       {office.system === 'proporcional' ? (
         <ProportionalExplorer cycle={cycle} ids={ids} office={office} header={header} />
       ) : upcoming ? (

@@ -2,6 +2,7 @@
 // Câmara (513 deputados eleitos, bancada a bancada), Senado (senadores eleitos no
 // ciclo) e governadores (eleitos e estados com 2º turno). A correlação de forças agrupa os partidos pela
 // aliança presidencial que registraram no TSE no 1º turno (lib/tse/alliances.ts).
+import { Breadcrumbs } from '../components/nav/Breadcrumbs'
 import { Clock } from '@phosphor-icons/react'
 import { useQueries, useQuery } from '@tanstack/react-query'
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
@@ -251,7 +252,8 @@ function Congress({ cycle, ids, turn }: { cycle: Cycle; ids?: ElectionIds; turn:
 
   return (
     <div>
-      <Container className="pt-10 sm:pt-14">
+      <Container className="pt-6 sm:pt-8">
+        <Breadcrumbs items={[{ label: 'Congresso e governadores' }]} className="mb-6" />
         <header className="max-w-3xl">
           <p className="text-sm text-muted">Eleições gerais de {cycle.year}</p>
           <h1 className="mt-1 font-serif text-4xl leading-tight font-semibold tracking-tight sm:text-5xl">

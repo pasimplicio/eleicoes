@@ -1,3 +1,4 @@
+import { Breadcrumbs } from '../components/nav/Breadcrumbs'
 import { ArrowSquareOut } from '@phosphor-icons/react'
 import { Container, SectionHeading } from '../components/ui'
 
@@ -40,7 +41,8 @@ const STEPS = [
 
 export function AboutPage() {
   return (
-    <Container className="pt-8 sm:pt-12">
+    <Container className="pt-6 sm:pt-8">
+      <Breadcrumbs items={[{ label: 'Sobre e metodologia' }]} className="mb-6" />
       <div className="max-w-3xl">
         <h1 className="font-serif text-[2.5rem] leading-[1.05] font-semibold tracking-tight sm:text-5xl">
           Metodologia e fontes

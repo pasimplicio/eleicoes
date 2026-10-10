@@ -1,5 +1,6 @@
 // Mapa de votos de um deputado: escolhe-se o cargo, o estado e o candidato, e o mapa
 // mostra onde ele foi votado, município a município, com os números oficiais do TSE.
+import { Breadcrumbs } from '../components/nav/Breadcrumbs'
 import { Clock, MagnifyingGlass, X } from '@phosphor-icons/react'
 import { useId, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
@@ -88,7 +89,8 @@ export function VoteMapPage() {
   }
 
   return (
-    <Container className="py-10 sm:py-14">
+    <Container className="pt-6 pb-10 sm:pt-8 sm:pb-14">
+      <Breadcrumbs items={[{ label: 'Mapas' }, { label: 'Mapa de votos' }]} className="mb-6" />
       <header className="max-w-3xl">
         <p className="text-sm text-muted">Eleições gerais de {cycle.year}</p>
         <h1 className="mt-1 font-serif text-4xl leading-tight font-semibold tracking-tight sm:text-5xl">Mapa de votos</h1>

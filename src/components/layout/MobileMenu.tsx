@@ -6,6 +6,7 @@ import { Link, NavLink, useLocation } from 'react-router-dom'
 import type { NavEntry, NavItem } from '../../config/nav'
 import { UFS } from '../../config/ufs'
 import { cn } from '../../lib/format'
+import { ContinueUf } from './DesktopNav'
 
 function Item({ item, onPick }: { item: NavItem; onPick: () => void }) {
   const Icon = item.icon
@@ -74,6 +75,7 @@ export function MobileMenu({ entries, ufYear }: { entries: NavEntry[]; ufYear?: 
             </button>
           </div>
           <div className="flex-1 overflow-y-auto">
+            {ufYear && <ContinueUf year={ufYear} onPick={fechar} className="mx-3 mt-3 min-h-12 text-[15px]" />}
             {ufYear && (
               <details className="group mx-3 mt-3 rounded-lg border border-line bg-surface-2">
                 <summary className="flex min-h-12 cursor-pointer list-none items-center gap-3 px-3 text-[15px] font-semibold [&::-webkit-details-marker]:hidden">

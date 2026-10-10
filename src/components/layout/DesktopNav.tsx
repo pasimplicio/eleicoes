@@ -1,11 +1,12 @@
 // Menu do cabeçalho a partir de lg: links diretos e grupos que abrem um painel ao clicar.
 // O painel fecha com Esc (devolvendo o foco ao botão), ao clicar fora ou ao trocar de página.
-import { CaretDown, MapPin } from '@phosphor-icons/react'
+import { ArrowRight, CaretDown, ClockCounterClockwise, MapPin } from '@phosphor-icons/react'
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { groupIsActive, type NavEntry, type NavItem, type NavSection } from '../../config/nav'
-import { UFS, type Region } from '../../config/ufs'
+import { inUf, UFS, type Region } from '../../config/ufs'
 import { cn } from '../../lib/format'
+import { getLastUf } from '../../lib/lastUf'
 
 const tab = 'relative flex h-16 cursor-pointer items-center gap-1 px-3 text-sm font-medium whitespace-nowrap transition-colors'
 const activeBar = 'text-ink after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:bg-ink'
@@ -133,6 +134,26 @@ function Panel({ sections }: { sections: NavSection[] }) {
 
 const REGIONS: Region[] = ['Norte', 'Nordeste', 'Centro-Oeste', 'Sudeste', 'Sul']
 
+/** "Continuar em São Paulo": volta ao último estado visitado. Relê a cada troca de página. */
+export function ContinueUf({ year, onPick, className }: { year: number; onPick?: () => void; className?: string }) {
+  useLocation()
+  const last = getLastUf()
+  if (!last) return null
+  return (
+    <Link
+      to={`/${year}/governador/${last.sigla.toLowerCase()}`}
+      onClick={onPick}
+      className={cn('flex min-h-10 items-center gap-2 rounded-md bg-surface-2 px-3 text-sm hover:bg-page', className)}
+    >
+      <ClockCounterClockwise className="h-4 w-4 shrink-0 text-muted" aria-hidden />
+      <span>
+        Continuar {inUf(last).replace(last.nome, '')}<strong className="font-semibold">{last.nome}</strong>
+      </span>
+      <ArrowRight className="ml-auto h-4 w-4 shrink-0" aria-hidden />
+    </Link>
+  )
+}
+
 /** Atalho para a página de um estado (governador do ciclo corrente). */
 export function UfPicker({ year }: { year: number }) {
   return (
@@ -151,6 +172,7 @@ export function UfPicker({ year }: { year: number }) {
         </span>
       )}
     >
+      <ContinueUf year={year} className="mx-2 mt-2 mb-1" />
       <div className="grid w-[50rem] grid-cols-5 gap-x-3 p-2">
         {REGIONS.map((r) => (
           <div key={r}>

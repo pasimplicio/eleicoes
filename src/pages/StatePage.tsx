@@ -1,6 +1,8 @@
-import { CaretRight, MagnifyingGlass, MapPin, X } from '@phosphor-icons/react'
-import { useId, useMemo, useState } from 'react'
-import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom'
+import { MagnifyingGlass, MapPin, X } from '@phosphor-icons/react'
+import { useEffect, useId, useMemo, useState } from 'react'
+import { Navigate, useParams, useSearchParams } from 'react-router-dom'
+import { Breadcrumbs } from '../components/nav/Breadcrumbs'
+import { OfficeTabs } from '../components/nav/OfficeTabs'
 import { ChoroplethMap } from '../components/map/ChoroplethMap'
 import { RunoffPreview } from '../components/results/Runoff'
 import { HeadToHead, Scoreboard, SectionsProgress, TotalsStrip } from '../components/results/Scoreboard'
@@ -10,6 +12,7 @@ import { partyColor } from '../config/parties'
 import { findUf, inUf, ofUf, type Uf } from '../config/ufs'
 import { shade } from '../lib/colors'
 import { cn, fmtPct } from '../lib/format'
+import { setLastUf } from '../lib/lastUf'
 import { defaultTurn } from '../lib/phase'
 import {
   isRunoffPending,
@@ -74,6 +77,8 @@ function StateView({
   onCity: (m?: string) => void
 }) {
   const { cycle, office, turn, ids } = target
+  // Lembra o estado para o atalho "Continuar em ..." do menu.
+  useEffect(() => setLastUf(uf.sigla), [uf.sigla])
   const ufl = uf.sigla.toLowerCase()
   const state = useResult(target, ufl)
   // 2º turno ainda sem arquivo: quem disputa vem do 1º turno (Brasil para presidente,
@@ -110,31 +115,18 @@ function StateView({
 
   return (
     <Container className="pt-6 sm:pt-8">
-      <nav aria-label="Trilha" className="flex flex-wrap items-center gap-1 text-sm text-muted">
-        <Link to={nationalHref} className="hover:text-ink hover:underline">
-          {office.name} {cycle.year}
-        </Link>
-        <CaretRight className="h-3.5 w-3.5" aria-hidden />
-        {selected ? (
-          <button type="button" onClick={() => onCity(undefined)} className="cursor-pointer hover:text-ink hover:underline">
-            {uf.nome}
-          </button>
-        ) : (
-          <span aria-current="page" className="text-ink">
-            {uf.nome}
-          </span>
-        )}
-        {selected && (
-          <>
-            <CaretRight className="h-3.5 w-3.5" aria-hidden />
-            <span aria-current="page" className="text-ink">
-              {selected.nome}
-            </span>
-          </>
-        )}
-      </nav>
+      <div className="space-y-4">
+        <Breadcrumbs
+          items={[
+            { label: `${office.name} ${cycle.year}`, to: nationalHref },
+            { label: uf.nome, onClick: () => onCity(undefined) },
+            ...(selected ? [{ label: selected.nome }] : []),
+          ]}
+        />
+        <OfficeTabs cycle={cycle} current={office} uf={uf.sigla} />
+      </div>
 
-      <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
+      <div className="mt-6 flex flex-wrap items-end justify-between gap-4">
         <h1 className="font-serif text-4xl leading-[1.05] font-semibold tracking-tight sm:text-5xl">{uf.nome}</h1>
         {office.hasRunoff && (
           <Segmented<Turn>
