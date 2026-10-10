@@ -1,10 +1,12 @@
 import { MonitorPlay, Moon, Sun } from '@phosphor-icons/react'
 import { useEffect, useState } from 'react'
-import { Link, NavLink, Outlet, ScrollRestoration } from 'react-router-dom'
-import { cn, fmtDateLong } from '../../lib/format'
+import { Link, Outlet, ScrollRestoration } from 'react-router-dom'
+import { buildNav } from '../../config/nav'
+import { fmtDateLong } from '../../lib/format'
 import { resultsStart, useFeaturedCycle } from '../../lib/phase'
 import { CountdownInline } from '../Countdown'
 import { InstallApp } from '../InstallApp'
+import { DesktopNav, UfPicker } from './DesktopNav'
 import { MobileMenu } from './MobileMenu'
 import { Container, LiveBadge } from '../ui'
 
@@ -75,22 +77,9 @@ function ElectionBar() {
 export function Layout() {
   const [dark, toggle] = useTheme()
   const f = useFeaturedCycle()
-  const nav = [
-    { to: '/', label: 'Início', end: true },
-    ...f.cycle.offices
-      .filter((o) => o.system === 'majoritario')
-      .map((o) => ({ to: `/${f.cycle.year}/${o.slug}`, label: o.name, end: false })),
-    ...(f.cycle.kind === 'geral' ? [{ to: `/${f.cycle.year}/deputado-federal`, label: 'Deputados', end: false }] : []),
-    ...(f.cycle.kind === 'geral'
-      ? [
-          { to: '/congresso', label: 'Congresso', end: false },
-          { to: '/mapa-de-votos', label: 'Mapa de votos', end: false },
-          { to: '/mapa-das-secoes', label: 'Seções', end: false },
-        ]
-      : []),
-    { to: '/sobre', label: 'Metodologia', end: false },
-    { to: '/telao', label: 'Telão', end: false },
-  ]
+  const nav = buildNav(f.cycle)
+  // A página por estado só existe para cargos estaduais (ciclo geral).
+  const ufYear = f.cycle.kind === 'geral' ? f.cycle.year : undefined
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -104,26 +93,13 @@ export function Layout() {
       <header className="sticky top-0 z-30 border-b border-line [@media(max-height:480px)]:static bg-surface/92 backdrop-blur-md supports-[not(backdrop-filter:blur(0))]:bg-surface">
         <Container className="flex h-16 items-center gap-6">
           <Wordmark />
-          <nav className="ml-auto hidden items-center xl:flex" aria-label="Principal">
-            {nav.map((n) => (
-              <NavLink
-                key={n.to}
-                to={n.to}
-                end={n.end}
-                className={({ isActive }) =>
-                  cn(
-                    'relative flex h-16 items-center px-3 text-sm font-medium transition-colors',
-                    isActive
-                      ? 'text-ink after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:bg-ink'
-                      : 'text-muted hover:text-ink',
-                  )
-                }
-              >
-                {n.label}
-              </NavLink>
-            ))}
-          </nav>
-          <div className="ml-auto flex items-center gap-1 xl:ml-0">
+          <DesktopNav entries={nav} />
+          <div className="ml-auto flex items-center gap-1 lg:ml-0">
+          {ufYear && (
+            <div className="mr-1 hidden lg:block">
+              <UfPicker year={ufYear} />
+            </div>
+          )}
           <button
             type="button"
             onClick={toggle}
@@ -132,7 +108,7 @@ export function Layout() {
           >
             {dark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
           </button>
-          <MobileMenu items={nav} />
+          <MobileMenu entries={nav} ufYear={ufYear} />
           </div>
         </Container>
       </header>
