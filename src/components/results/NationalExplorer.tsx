@@ -11,6 +11,7 @@ import type { ResultSummary } from '../../lib/tse/model'
 import { useQuery } from '@tanstack/react-query'
 import { aggregateResults } from '../../lib/tse/adapter'
 import { electionId, isRunoffPending, resultQuery, useResult, useUfResults } from '../../lib/tse/queries'
+import { EvolutionSection } from './EvolutionChart'
 import { LeadGap, ResultHeadline } from './Headline'
 import { RunoffPreview } from './Runoff'
 import { ChoroplethMap } from '../map/ChoroplethMap'
@@ -157,6 +158,13 @@ export function NationalExplorer({ cycle, ids, office, turn, header }: Props) {
             )}
             <PartyLegend byUf={inView} />
           </figcaption>
+          {isNational && region === 'Brasil' && (
+            <EvolutionSection
+              className="mt-8"
+              target={{ cycle, ids, office, turn: runoffNational ? 1 : turn }}
+              result={runoffNational ? national1.data : national.data}
+            />
+          )}
         </figure>
       </div>
 

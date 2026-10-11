@@ -300,3 +300,20 @@
 .secoes-map .secao-tip { background: var(--color-ink); color: var(--color-page); border: 0; border-radius: 6px; padding: 6px 9px; font-size: 12px; line-height: 1.35; box-shadow: 0 6px 18px rgb(17 20 24 / 0.22); width: max-content; max-width: 280px; white-space: normal; }
 .secoes-map .secao-tip span { opacity: 0.8; }
 .secoes-map .secao-tip::before { border-top-color: var(--color-ink); }
+
+/* Gráfico de evolução: a linha usa a cor do partido (--c). No escuro, um tom mais claro do
+   mesmo partido (25% de branco), validado contra o fundo escuro. */
+.evo-stroke {
+  stroke: var(--c);
+}
+.evo-fill {
+  fill: var(--c);
+  background: var(--c);
+}
+.dark .evo-stroke {
+  stroke: color-mix(in srgb, var(--c) 75%, white);
+}
+.dark .evo-fill {
+  fill: color-mix(in srgb, var(--c) 75%, white);
+  background: color-mix(in srgb, var(--c) 75%, white);
+}

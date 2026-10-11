@@ -3,6 +3,8 @@
 // o que absorve o pico de acesso no dia da eleição.
 // Rota pública: /tse/<caminho> (reescrita em vercel.json para /api/tse?p=<caminho>).
 
+import { recordingEnabled, recordNational } from './_evolucao.js'
+
 const ORIGIN = 'https://resultados.tse.jus.br/oficial/'
 
 // Apenas arquivos do padrão de divulgação do TSE: ciclo, config comum, dados e fotos.
@@ -29,6 +31,22 @@ export async function GET(request: Request): Promise<Response> {
       : isConfig
         ? 'public, max-age=60, s-maxage=300, stale-while-revalidate=3600'
         : 'public, max-age=0, s-maxage=20, stale-while-revalidate=60'
+
+  // Arquivo nacional de presidente: grava o ponto da evolução da apuração (ver _evolucao.ts).
+  // Roda a cada nova leitura do TSE (≈ a cada 20 s enquanto houver visitantes).
+  const national = upstream.ok && path.match(/^(ele\d{4})\/\d+\/dados\/br\/br-c0001-e(\d{6})-u\.json$/)
+  if (national && recordingEnabled) {
+    const body = await upstream.text()
+    await recordNational(national[1], national[2], body)
+    return new Response(body, {
+      status: upstream.status,
+      headers: {
+        'Content-Type': upstream.headers.get('Content-Type') ?? 'application/json',
+        'Cache-Control': cache,
+        'Access-Control-Allow-Origin': '*',
+      },
+    })
+  }
 
   return new Response(upstream.body, {
     status: upstream.status,
