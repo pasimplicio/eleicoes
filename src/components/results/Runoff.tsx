@@ -7,7 +7,8 @@ import { todayBrasilia } from '../../config/elections'
 import { partyColor } from '../../config/parties'
 import { fmtDateLong, fmtInt, fmtPct } from '../../lib/format'
 import { resultsStart } from '../../lib/phase'
-import type { ResultSummary } from '../../lib/tse/model'
+import type { CandidateResult, ResultSummary } from '../../lib/tse/model'
+import { fmtVotesShort } from '../../lib/headline'
 import { Countdown } from '../Countdown'
 import { CandidatePhoto, PartyChip } from './Candidate'
 
@@ -62,10 +63,38 @@ export function RunoffPreview({ cycle, first, place }: { cycle: Cycle; first: Re
         {a && b && (
           <p className="mt-3 text-sm text-muted">
             No 1º turno, {a.name} terminou {gap.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{' '}
-            pontos à frente. No 2º turno, a votação recomeça do zero.
+            pontos à frente ({fmtVotesShort(Math.abs(a.votes - b.votes))} de diferença). No 2º turno, a votação recomeça do zero.
           </p>
         )}
+        <OthersLine candidates={first.candidates.filter((c) => !c.runoff)} />
       </div>
+    </div>
+  )
+}
+
+/** "Os demais no 1º turno: C 2,9% · D 2,2% · E 2,2% · outros 7 somam 0,5%" */
+function OthersLine({ candidates }: { candidates: CandidateResult[] }) {
+  if (!candidates.length) return null
+  const shown = candidates.slice(0, 3)
+  const rest = candidates.slice(3)
+  const restPct = rest.reduce((s, c) => s + c.pct, 0)
+  return (
+    <div className="mt-5 border-t border-line pt-4">
+      <p className="mb-2 text-xs text-muted">Os demais no 1º turno</p>
+      <ul className="flex flex-wrap gap-x-5 gap-y-1.5 text-sm">
+        {shown.map((c) => (
+          <li key={c.id}>
+            {c.name} <span className="text-muted">{c.party}</span>{' '}
+            <span className="font-semibold tabular">{fmtPct(c.pct)}</span>
+          </li>
+        ))}
+        {rest.length > 0 && (
+          <li className="text-muted">
+            {rest.length === 1 ? 'mais 1 candidato' : `outros ${rest.length} somam`}{' '}
+            <span className="font-semibold text-ink-2 tabular">{fmtPct(restPct)}</span>
+          </li>
+        )}
+      </ul>
     </div>
   )
 }

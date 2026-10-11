@@ -71,6 +71,15 @@ async function fetchSimplified(cycle: Cycle, ele: string, office: Office, abr: s
   return adaptSimplified(raw, (sq) => photoPath(cycle.tse, ele, photoAbr(office, abr), sq))
 }
 
+/**
+ * O TSE publica o arquivo do 2º turno zerado dias antes da votação. Até a primeira seção
+ * ser totalizada, ele vale como "ainda não publicado": a página segue com a prévia
+ * (finalistas e 1º turno) em vez de mostrar 0% para todos.
+ */
+function hasVotes(r: ResultSummary) {
+  return r.sectionsPct > 0 || (r.sectionsCounted ?? 0) > 0 || r.valid > 0
+}
+
 interface Target {
   cycle: Cycle
   ids?: ElectionIds
@@ -99,7 +108,8 @@ export function resultQuery({ cycle, ids, office, turn }: Target, abr: string) {
     queryFn: async (): Promise<ResultSummary | null> => {
       if (ele2) {
         try {
-          return await fetchSimplified(cycle, ele2, office, abr)
+          const second = await fetchSimplified(cycle, ele2, office, abr)
+          if (hasVotes(second)) return second
         } catch (err) {
           if (!notFound(err)) throw err
         }
@@ -161,12 +171,16 @@ export function useCityResult(target: Target, uf: string, mun: string | undefine
           return null
         }
         try {
-          if (usesUnified(cycle.year)) return await fetchSimplified(cycle, ele, office, `${ufl}${mun}`)
-          const votes = await getJson<RawVotes>(votesPath(cycle.tse, ele, office.code, ufl, mun))
-          const fixed = await getJson<RawFixed>(fixedPath(cycle.tse, ele, ufl, votes.nadf))
-          return (
-            adaptVotes(votes, adaptFixed(fixed), (sq) => photoPath(cycle.tse, ele, photoAbr(office, ufl), sq)) ?? null
-          )
+          let result: ResultSummary | null
+          if (usesUnified(cycle.year)) result = await fetchSimplified(cycle, ele, office, `${ufl}${mun}`)
+          else {
+            const votes = await getJson<RawVotes>(votesPath(cycle.tse, ele, office.code, ufl, mun))
+            const fixed = await getJson<RawFixed>(fixedPath(cycle.tse, ele, ufl, votes.nadf))
+            result = adaptVotes(votes, adaptFixed(fixed), (sq) => photoPath(cycle.tse, ele, photoAbr(office, ufl), sq)) ?? null
+          }
+          // 2º turno ainda zerado: segue para o 1º turno, como se não estivesse publicado.
+          if (ele === candidates[0] && result && !hasVotes(result)) continue
+          return result
         } catch (err) {
           if (!notFound(err)) throw err
         }
@@ -243,6 +257,8 @@ export function useMunicipalLeaders(target: Target, uf: string) {
         try {
           const qs = new URLSearchParams({ ciclo: cycle.tse, ele, cargo: office.code, uf: ufl })
           const summary = await getJson<MunicipalSummary>(`/api/municipios?${qs}`)
+          // 2º turno ainda zerado em todas as cidades: segue para o 1º turno.
+          if (ele === eles[0] && Object.values(summary.cities).every(([pct]) => !pct)) continue
           const names = summary.names
             ? new Map(Object.entries(summary.names).map(([n, [name, party]]) => [n, { id: n, name: titleCase(name), party }]))
             : adaptFixed(await getJson<RawFixed>(fixedPath(cycle.tse, ele, ufl, summary.nadf)))

@@ -7,7 +7,9 @@ import { resultsStart, useFeaturedCycle } from '../../lib/phase'
 import { CountdownInline } from '../Countdown'
 import { InstallApp } from '../InstallApp'
 import { DesktopNav, UfPicker } from './DesktopNav'
+import { ConnectionBanner } from './ConnectionBanner'
 import { MobileMenu } from './MobileMenu'
+import { ShareButton } from './ShareButton'
 import { Container, LiveBadge } from '../ui'
 
 function useTheme() {
@@ -100,6 +102,7 @@ export function Layout() {
               <UfPicker year={ufYear} />
             </div>
           )}
+          <ShareButton />
           <button
             type="button"
             onClick={toggle}
@@ -111,6 +114,7 @@ export function Layout() {
           <MobileMenu entries={nav} ufYear={ufYear} />
           </div>
         </Container>
+        <ConnectionBanner />
       </header>
 
       <main id="conteudo" className="flex-1">

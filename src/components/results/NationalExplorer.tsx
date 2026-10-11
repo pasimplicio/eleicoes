@@ -11,6 +11,7 @@ import type { ResultSummary } from '../../lib/tse/model'
 import { useQuery } from '@tanstack/react-query'
 import { aggregateResults } from '../../lib/tse/adapter'
 import { electionId, isRunoffPending, resultQuery, useResult, useUfResults } from '../../lib/tse/queries'
+import { LeadGap, ResultHeadline } from './Headline'
 import { RunoffPreview } from './Runoff'
 import { ChoroplethMap } from '../map/ChoroplethMap'
 import { EmptyState, Segmented, SectionHeading, Skeleton } from '../ui'
@@ -42,8 +43,9 @@ export function NationalExplorer({ cycle, ids, office, turn, header }: Props) {
   const runoffNational = turn === 2 && isNational && !national.data && isRunoffPending(national1.data)
   const byUf = runoffNational ? first.byUf : byUfTurn
   /** UF com 2º turno ainda por vir (governador): resultado do 1º turno para a prévia. */
+  // Presidente: o 2º turno é nacional, e o mapa da prévia mostra o mais votado de cada UF no 1º turno.
   const pendingOf = (sigla: string) =>
-    turn === 2 && !byUfTurn[sigla] && isRunoffPending(first.byUf[sigla]) ? first.byUf[sigla] : undefined
+    !isNational && turn === 2 && !byUfTurn[sigla] && isRunoffPending(first.byUf[sigla]) ? first.byUf[sigla] : undefined
   // Exterior (abrangência "zz" do TSE): só há votos para presidente. Aparece quando o
   // TSE publicar o arquivo oficial; até lá a consulta devolve null e nada é exibido.
   const exterior = useQuery({
@@ -90,7 +92,10 @@ export function NationalExplorer({ cycle, ids, office, turn, header }: Props) {
         <div className="fade-up space-y-7">
           {header}
           {runoffNational && national1.data ? (
-            <RunoffPreview cycle={cycle} first={national1.data} place="Brasil" />
+            <div className="space-y-6">
+              <ResultHeadline result={national1.data} hasRunoff={office.hasRunoff} />
+              <RunoffPreview cycle={cycle} first={national1.data} place="Brasil" />
+            </div>
           ) : noData ? (
             <EmptyState icon={<Clock className="h-7 w-7" />} title="Resultados ainda não divulgados">
               O TSE começa a divulgar a apuração às 17h (Brasília) do dia da votação. A página se atualiza sozinha.
@@ -99,12 +104,14 @@ export function NationalExplorer({ cycle, ids, office, turn, header }: Props) {
             headline ? (
               <div className="space-y-6">
                 {regional && <RegionLabel region={region} ufs={ufsInView.length} loaded={Object.values(inView).filter(Boolean).length} />}
+                <ResultHeadline result={headline} withStatus={!regional} hasRunoff={office.hasRunoff} />
                 <SectionsProgress result={headline} />
                 {headline.turn === 2 && headline.candidates.length === 2 ? (
                   <HeadToHead result={headline} />
                 ) : (
                   <Scoreboard result={headline} limit={4} />
                 )}
+                <LeadGap result={headline} />
                 <TotalsStrip result={headline} />
               </div>
             ) : (

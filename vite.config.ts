@@ -10,12 +10,19 @@ function devApi(names: string[]): Plugin {
     configureServer(server) {
       for (const name of names) {
         server.middlewares.use(`/api/${name}`, async (req, res) => {
-          const mod = await server.ssrLoadModule(`/api/${name}.ts`)
-          const url = new URL(req.originalUrl ?? '', `http://${req.headers.host}`)
-          const response: Response = await mod.GET(new Request(url))
-          res.statusCode = response.status
-          response.headers.forEach((v, k) => res.setHeader(k, v))
-          res.end(Buffer.from(await response.arrayBuffer()))
+          // Uma falha do TSE (ex.: tempo esgotado) vira 502, sem derrubar o servidor de desenvolvimento.
+          try {
+            const mod = await server.ssrLoadModule(`/api/${name}.ts`)
+            const url = new URL(req.originalUrl ?? '', `http://${req.headers.host}`)
+            const response: Response = await mod.GET(new Request(url))
+            res.statusCode = response.status
+            response.headers.forEach((v, k) => res.setHeader(k, v))
+            res.end(Buffer.from(await response.arrayBuffer()))
+          } catch (err) {
+            server.config.logger.warn(`[dev-api] /api/${name}: ${(err as Error).message}`)
+            res.statusCode = 502
+            res.end('Falha ao consultar a origem')
+          }
         })
       }
     },

@@ -93,7 +93,12 @@ export function Scoreboard(props: Props) {
       {rest.length > 0 && (
         <details className="group rounded-md border border-line">
           <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between px-4 text-sm font-medium text-ink-2 hover:bg-surface-2">
-            Outros {rest.length} candidatos
+            <span>
+              Outros {rest.length} candidatos{' '}
+              <span className="font-normal text-muted">
+                somam {fmtPct(rest.reduce((s, c) => s + c.pct, 0))}
+              </span>
+            </span>
             <CaretDown className="h-4 w-4 transition-transform group-open:rotate-180" aria-hidden />
           </summary>
           <ul className="grid gap-x-6 px-4 pb-3 sm:grid-cols-2">

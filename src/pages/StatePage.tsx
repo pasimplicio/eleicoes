@@ -4,6 +4,7 @@ import { Navigate, useParams, useSearchParams } from 'react-router-dom'
 import { Breadcrumbs } from '../components/nav/Breadcrumbs'
 import { OfficeTabs } from '../components/nav/OfficeTabs'
 import { ChoroplethMap } from '../components/map/ChoroplethMap'
+import { LeadGap, ResultHeadline } from '../components/results/Headline'
 import { RunoffPreview } from '../components/results/Runoff'
 import { HeadToHead, Scoreboard, SectionsProgress, TotalsStrip } from '../components/results/Scoreboard'
 import { Container, EmptyState, Segmented, Skeleton } from '../components/ui'
@@ -176,15 +177,20 @@ function StateView({
               <Skeleton className="h-14 w-full" />
             </div>
           ) : !selected && runoffPreview ? (
-            <RunoffPreview cycle={cycle} first={runoffPreview} place={uf.nome} />
+            <div className="space-y-6">
+              {showStatus && <ResultHeadline result={runoffPreview} hasRunoff={office.hasRunoff} />}
+              <RunoffPreview cycle={cycle} first={runoffPreview} place={uf.nome} />
+            </div>
           ) : shown.data ? (
             <div className="space-y-6">
+              {!selected && <ResultHeadline result={shown.data} withStatus={showStatus} hasRunoff={office.hasRunoff} />}
               <SectionsProgress result={shown.data} />
               {shown.data.turn === 2 && shown.data.candidates.length === 2 ? (
                 <HeadToHead result={shown.data} showStatus={showStatus} />
               ) : (
                 <Scoreboard result={shown.data} limit={4} compact={Boolean(selected)} showStatus={showStatus} />
               )}
+              <LeadGap result={shown.data} />
               <TotalsStrip result={shown.data} />
             </div>
           ) : (
