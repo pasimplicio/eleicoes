@@ -12,17 +12,27 @@ import { MobileMenu } from './MobileMenu'
 import { ShareButton } from './ShareButton'
 import { Container, LiveBadge } from '../ui'
 
+/**
+ * Tema escuro por padrão (index.html aplica antes da primeira pintura). A escolha só é
+ * guardada quando o visitante usa o botão; a chave "tema" substitui a antiga "theme", que
+ * era gravada em toda visita e não indicava uma escolha.
+ */
 function useTheme() {
   const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'))
   useEffect(() => {
     document.documentElement.classList.toggle('dark', dark)
-    try {
-      localStorage.setItem('theme', dark ? 'dark' : 'light')
-    } catch {
-      /* armazenamento indisponível */
-    }
   }, [dark])
-  return [dark, () => setDark((d) => !d)] as const
+  const toggle = () =>
+    setDark((d) => {
+      try {
+        localStorage.setItem('tema', d ? 'claro' : 'escuro')
+        localStorage.removeItem('theme')
+      } catch {
+        /* armazenamento indisponível */
+      }
+      return !d
+    })
+  return [dark, toggle] as const
 }
 
 function Wordmark() {

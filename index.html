@@ -16,9 +16,11 @@
     <meta property="og:type" content="website" />
     <script>
       try {
-        var t = localStorage.getItem('theme')
-        if (t === 'dark' || (!t && matchMedia('(prefers-color-scheme: dark)').matches)) document.documentElement.classList.add('dark')
-      } catch (e) {}
+        // Tema escuro por padrão; claro só para quem escolheu no botão do cabeçalho.
+        if (localStorage.getItem('tema') !== 'claro') document.documentElement.classList.add('dark')
+      } catch (e) {
+        document.documentElement.classList.add('dark')
+      }
     </script>
     <title>Apuração Brasil | Eleições</title>
   </head>

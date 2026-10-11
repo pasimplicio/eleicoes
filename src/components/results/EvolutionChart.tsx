@@ -177,7 +177,7 @@ function Chart({ series, turn }: { series: EvolutionSeries; turn: Turn }) {
         >
           <p className="mb-1 font-semibold text-ink">
             {hour(times[hover])}
-            <span className="font-normal text-muted"> · {fmtPct(series.sections[hover])} das seções</span>
+            <span className="font-normal text-muted"> · {fmtPct(series.sections[hover])} das {series.unit}</span>
           </p>
           {[...lines]
             .sort((a, b) => b.pct[hover] - a.pct[hover])
@@ -209,7 +209,7 @@ function DataTable({ series }: { series: EvolutionSeries }) {
           <thead className="sticky top-0 bg-surface-2 text-xs text-muted">
             <tr>
               <th className="px-3 py-2 font-medium">Horário</th>
-              <th className="px-3 py-2 font-medium">Seções</th>
+              <th className="px-3 py-2 font-medium">{series.unit === 'urnas' ? 'Urnas' : 'Seções'}</th>
               {lines.map((l) => (
                 <th key={l.number} className="px-3 py-2 font-medium">
                   {l.name}
@@ -270,7 +270,9 @@ export function EvolutionSection({
 
       <Chart series={evo.series} turn={target.turn} />
       <p className="mt-2 text-xs leading-relaxed text-muted">
-        Percentual dos votos válidos a cada atualização do TSE, gravado por este site durante a apuração.
+        {evo.series.source === 'gravada'
+          ? 'Percentual dos votos válidos a cada atualização do TSE, gravado por este site durante a apuração.'
+          : `Percentual dos votos válidos, minuto a minuto, na ordem em que o TSE recebeu os boletins de urna (dados abertos do TSE)${evo.series.exterior ? '' : ', sem os votos do exterior'}.`}
       </p>
       <DataTable series={evo.series} />
     </section>

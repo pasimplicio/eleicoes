@@ -46,7 +46,7 @@ export default defineConfig({
         description: 'Resultados e mapas das eleições com dados oficiais do TSE.',
         lang: 'pt-BR',
         theme_color: '#111418',
-        background_color: '#f3f4f6',
+        background_color: '#0b0d11',
         display: 'standalone',
         id: '/',
         start_url: '/',
