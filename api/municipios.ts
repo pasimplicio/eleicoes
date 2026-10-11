@@ -72,6 +72,7 @@ export async function buildSummary(
   })
 
   if (results.every((r) => r.status === 404)) return null
+  assertComplete(results)
 
   for (const r of results) {
     if (!r.data) continue
@@ -103,6 +104,7 @@ async function buildUnified(
     return { mun, status: 200, data: (await res.json()) as RawUnified }
   })
   if (results.every((r) => r.status === 404)) return null
+  assertComplete(results)
 
   let updatedAt = ''
   let final = true
@@ -124,6 +126,18 @@ async function buildUnified(
   return { nadf: '', names, updatedAt, final, cities }
 }
 
+/** Falha do TSE (429, 5xx) numa cidade: a resposta não pode ir para o cache como se fosse completa. */
+class UpstreamError extends Error {}
+
+/**
+ * Uma cidade que não veio por erro do TSE (e não por "ainda não publicado") invalida a varredura:
+ * sem isso, a UF sairia sem aquela cidade (ou vazia) e marcada como final, com um dia de cache.
+ */
+function assertComplete(results: { status: number }[]) {
+  const failed = results.filter((r) => r.status !== 200 && r.status !== 404)
+  if (failed.length) throw new UpstreamError(`${failed.length} município(s) com erro ${failed[0].status} no TSE`)
+}
+
 const VALID = { ciclo: /^ele\d{4}$/, ele: /^\d{1,6}$/, cargo: /^\d{1,4}$/, uf: /^[a-z]{2}$/ }
 
 export async function GET(request: Request): Promise<Response> {
@@ -142,7 +156,13 @@ export async function GET(request: Request): Promise<Response> {
   if (!listRes.ok) return new Response('UF desconhecida', { status: 404 })
   const municipalities = ((await listRes.json()) as { tse: string }[]).map((m) => m.tse)
 
-  const summary = await buildSummary(params, municipalities)
+  let summary: MunicipalSummary | null
+  try {
+    summary = await buildSummary(params, municipalities)
+  } catch (err) {
+    if (!(err instanceof UpstreamError)) throw err
+    return new Response(err.message, { status: 503, headers: { 'Cache-Control': 'no-store' } })
+  }
   if (!summary) {
     return new Response('Não publicado', { status: 404, headers: { 'Cache-Control': 'public, s-maxage=60' } })
   }
@@ -150,7 +170,10 @@ export async function GET(request: Request): Promise<Response> {
     headers: {
       'Cache-Control': summary.final
         ? 'public, max-age=300, s-maxage=86400, stale-while-revalidate=86400'
-        : 'public, max-age=15, s-maxage=30, stale-while-revalidate=120',
+        : // Mapa nacional (escala=br): as 27 UFs ao mesmo tempo; cache maior para poupar o TSE.
+          url.searchParams.get('escala') === 'br'
+          ? 'public, max-age=60, s-maxage=120, stale-while-revalidate=300'
+          : 'public, max-age=15, s-maxage=30, stale-while-revalidate=120',
     },
   })
 }

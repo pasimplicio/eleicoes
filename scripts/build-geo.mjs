@@ -1,5 +1,5 @@
 // Gera os arquivos estáticos de mapa em public/geo a partir das fontes oficiais:
-//  - malhas IBGE (API v3) do Brasil por UF e de cada UF por município (TopoJSON)
+//  - malhas IBGE (API v3) do Brasil por UF e por município, e de cada UF por município (TopoJSON)
 //  - tabela de códigos de município TSE <-> IBGE (config de municípios do TSE)
 // Uso: node scripts/build-geo.mjs
 import { mkdir, writeFile } from 'node:fs/promises'
@@ -43,6 +43,8 @@ async function save(path, data) {
 const q = 'formato=application/json&qualidade=minima'
 
 await save('br-uf.json', await getJson(`${IBGE}/paises/BR?${q}&intrarregiao=UF`))
+// Brasil inteiro por município, para a camada de municípios do mapa nacional (~400 KB gzip).
+await save('br-mun.json', await getJson(`${IBGE}/paises/BR?${q}&intrarregiao=municipio`))
 
 for (const [code, sg] of Object.entries(UFS)) {
   await save(`uf/${sg.toLowerCase()}.json`, await getJson(`${IBGE}/estados/${code}?${q}&intrarregiao=municipio`))

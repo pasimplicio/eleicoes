@@ -9,6 +9,7 @@ import { InstallApp } from '../InstallApp'
 import { DesktopNav, UfPicker } from './DesktopNav'
 import { ConnectionBanner } from './ConnectionBanner'
 import { MobileMenu } from './MobileMenu'
+import { SearchDialog } from './SearchDialog'
 import { ShareButton } from './ShareButton'
 import { Container, LiveBadge } from '../ui'
 
@@ -38,8 +39,10 @@ function useTheme() {
 function Wordmark() {
   return (
     <Link to="/" className="flex shrink-0 items-center gap-2.5" aria-label="Apuração Brasil, página inicial">
-      <img src="/favicon.svg" alt="" width={32} height={32} className="h-8 w-8 rounded-md dark:ring-1 dark:ring-white/20" />
-      <span className="font-serif text-[1.4rem] leading-none font-semibold tracking-tight">Apuração Brasil</span>
+      <img src="/favicon.svg" alt="" width={32} height={32} className="h-7 w-7 rounded-md sm:h-8 sm:w-8 dark:ring-1 dark:ring-white/20" />
+      <span className="font-serif text-[1.15rem] leading-none font-semibold tracking-tight max-[359px]:hidden sm:text-[1.4rem]">
+        Apuração Brasil
+      </span>
     </Link>
   )
 }
@@ -103,10 +106,11 @@ export function Layout() {
       </a>
       <ElectionBar />
       <header className="sticky top-0 z-30 border-b border-line [@media(max-height:480px)]:static bg-surface/92 backdrop-blur-md supports-[not(backdrop-filter:blur(0))]:bg-surface">
-        <Container className="flex h-16 items-center gap-6">
+        <Container className="flex h-16 items-center gap-3 sm:gap-6">
           <Wordmark />
           <DesktopNav entries={nav} />
           <div className="ml-auto flex items-center gap-1 lg:ml-0">
+          <SearchDialog cycle={f.cycle} ids={f.ids} />
           {ufYear && (
             <div className="mr-1 hidden lg:block">
               <UfPicker year={ufYear} />
@@ -116,12 +120,12 @@ export function Layout() {
           <button
             type="button"
             onClick={toggle}
-            className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-md text-ink-2 transition hover:bg-surface-2 hover:text-ink"
+            className="hidden h-11 w-11 cursor-pointer items-center justify-center rounded-md text-ink-2 transition hover:bg-surface-2 hover:text-ink lg:flex"
             aria-label={dark ? 'Usar tema claro' : 'Usar tema escuro'}
           >
             {dark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
           </button>
-          <MobileMenu entries={nav} ufYear={ufYear} />
+          <MobileMenu entries={nav} ufYear={ufYear} dark={dark} onToggleTheme={toggle} />
           </div>
         </Container>
         <ConnectionBanner />

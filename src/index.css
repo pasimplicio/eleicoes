@@ -317,3 +317,18 @@
   fill: color-mix(in srgb, var(--c) 75%, white);
   background: color-mix(in srgb, var(--c) 75%, white);
 }
+
+/* Rótulos do mapa: texto claro com contorno escuro, legível sobre qualquer cor de partido
+   nos dois temas. Os rótulos laterais (áreas pequenas) ficam na cor do texto da página. */
+.map-label {
+  fill: #fff;
+  stroke: rgb(0 0 0 / 0.6);
+  stroke-linejoin: round;
+  paint-order: stroke;
+}
+.map-callout text {
+  fill: var(--color-ink);
+}
+.map-callout polyline {
+  stroke: var(--color-muted);
+}

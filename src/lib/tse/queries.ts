@@ -1,4 +1,5 @@
 import { queryOptions, useQueries, useQuery } from '@tanstack/react-query'
+import { useMemo } from 'react'
 import type { Cycle, ElectionIds, Office, Turn } from '../../config/elections'
 import { UFS } from '../../config/ufs'
 import { titleCase } from '../format'
@@ -210,7 +211,11 @@ export function useStatic<T>(path: string | undefined) {
 }
 
 export function useMunicipalities(uf: string) {
-  return useQuery({
+  return useQuery(municipalitiesQuery(uf))
+}
+
+export function municipalitiesQuery(uf: string) {
+  return queryOptions({
     queryKey: ['municipalities', uf],
     queryFn: async () =>
       (await getJson<Municipality[]>(`/geo/mun/${uf.toLowerCase()}.json`))
@@ -240,13 +245,41 @@ export interface CityLeader {
 
 /** Líderes por município de uma UF (código TSE do município -> líder). */
 export function useMunicipalLeaders(target: Target, uf: string) {
+  return useQuery(municipalLeadersQuery(target, uf))
+}
+
+/**
+ * Líderes de todos os municípios do país, indexados pelo código IBGE (o da malha do mapa).
+ * São 27 consultas (uma por UF, com cache no CDN); só disparam com `enabled`.
+ */
+export function useNationalMunicipalLeaders(target: Target, enabled: boolean) {
+  const leaders = useQueries({ queries: UFS.map((uf) => municipalLeadersQuery(target, uf.sigla, enabled, true)) })
+  const lists = useQueries({ queries: UFS.map((uf) => ({ ...municipalitiesQuery(uf.sigla), enabled })) })
+  const loaded = leaders.filter((q) => q.data).length
+  const byIbge = useMemo(() => {
+    const out: Record<string, CityLeader & { uf: string; tse: string; nome: string }> = {}
+    UFS.forEach((uf, i) => {
+      const l = leaders[i].data?.leaders
+      const muns = lists[i].data
+      if (!l || !muns) return
+      for (const m of muns) if (l[m.tse]) out[m.ibge] = { ...l[m.tse], uf: uf.sigla, tse: m.tse, nome: m.nome }
+    })
+    return out
+    // As consultas mudam de identidade a cada render; o que importa é quando os dados chegam.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leaders.map((q) => q.dataUpdatedAt).join(), lists.map((q) => q.dataUpdatedAt).join()])
+  return { byIbge, loaded, loading: leaders.some((q) => q.isLoading) || lists.some((q) => q.isLoading) }
+}
+
+/** `national`: pedido do mapa nacional (escala=br), com cache maior no CDN e atualização a cada 2 min. */
+export function municipalLeadersQuery(target: Target, uf: string, enabled = true, national = false) {
   const { cycle, ids, office, turn } = target
   const ufl = uf.toLowerCase()
-  return useQuery({
-    queryKey: ['municipal-map', cycle.tse, office.code, turn, ufl],
-    enabled: Boolean(electionId(ids, office, 1)),
+  return queryOptions({
+    queryKey: ['municipal-map', cycle.tse, office.code, turn, ufl, national],
+    enabled: enabled && Boolean(electionId(ids, office, 1)),
     retry,
-    refetchInterval: livePolling(cycle, turn),
+    refetchInterval: national ? livePolling(cycle, turn, 120_000) : livePolling(cycle, turn),
     queryFn: async () => {
       const eles = [turn === 2 ? electionId(ids, office, 2) : undefined, electionId(ids, office, 1)]
       for (const ele of eles) {
@@ -256,6 +289,7 @@ export function useMunicipalLeaders(target: Target, uf: string) {
         }
         try {
           const qs = new URLSearchParams({ ciclo: cycle.tse, ele, cargo: office.code, uf: ufl })
+          if (national) qs.set('escala', 'br')
           const summary = await getJson<MunicipalSummary>(`/api/municipios?${qs}`)
           // 2º turno ainda zerado em todas as cidades: segue para o 1º turno.
           if (ele === eles[0] && Object.values(summary.cities).every(([pct]) => !pct)) continue

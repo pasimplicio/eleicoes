@@ -15,16 +15,20 @@ npm run geo          # regera as malhas em public/geo (IBGE + códigos TSE)
 ```
 
 Em desenvolvimento o Vite faz o papel das funções da Vercel: `/tse/*` é repassado ao servidor de resultados
-do TSE e `/api/municipios` roda `api/municipios.ts` localmente.
+do TSE e `/api/municipios`, `/api/evolucao` (e as demais em `devApi`, no `vite.config.ts`) rodam localmente.
 
 ## Arquitetura
 
 ```
 api/
-  tse.ts              proxy com cache no CDN para resultados.tse.jus.br/oficial
-  municipios.ts       agrega os resultados de todos os municípios de uma UF (mapa estadual)
-scripts/build-geo.mjs malhas do IBGE e tabela de municípios TSE <-> IBGE
-public/geo/           TopoJSON do Brasil e das 27 UFs; códigos de município
+  tse.ts              proxy com cache no CDN para resultados.tse.jus.br/oficial; grava a evolução nacional
+  municipios.ts       agrega os resultados de todos os municípios de uma UF (mapas estadual e nacional)
+  evolucao.ts         série gravada da evolução da apuração de presidente (ver _evolucao.ts)
+scripts/
+  build-geo.mjs       malhas do IBGE e tabela de municípios TSE <-> IBGE
+  build-evolution.mjs evolução da apuração reconstruída pelos boletins de urna (dados abertos)
+public/geo/           TopoJSON do Brasil (por UF e por município) e das 27 UFs; códigos de município
+public/data/evolucao/ evolução reconstruída de cada eleição (gerada por build-evolution.mjs)
 src/
   config/
     elections.ts      ciclos eleitorais (gerais/municipais), cargos, datas e códigos do TSE
@@ -52,12 +56,28 @@ adapter precisa mudar.
 
 O navegador nunca chama o TSE diretamente. As respostas ficam no CDN da Vercel por 20 a 30 s
 (`stale-while-revalidate`), as malhas são estáticas e o service worker mostra o último dado se a conexão cair.
+O mapa nacional de municípios pede as 27 UFs de uma vez (`escala=br`) e por isso fica 2 min no CDN. Uma
+varredura de UF em que o TSE recusa algum município (429, 5xx) responde 503 sem cache, para não guardar um
+resultado incompleto como final.
+
+### Evolução da apuração (gráfico de linhas)
+
+O TSE só publica o resultado acumulado e, ao retotalizar, sobrescreve os horários. A curva vem de:
+
+1. **Gravação ao vivo:** `api/tse.ts` grava cada leitura do arquivo nacional de presidente no **Upstash Redis**
+   (Vercel → Storage → Upstash, que cria `KV_REST_API_URL` e `KV_REST_API_TOKEN`). Sem essas variáveis, nada é
+   gravado e o site segue normal. A gravação acontece enquanto houver visitantes (a cada leitura nova do CDN).
+2. **Boletins de urna:** depois da eleição, `node scripts/build-evolution.mjs <ano> <turno> <código>` (ex.:
+   `2026 1 6257`) soma os votos de cada urna na ordem em que o TSE recebeu os boletins e grava
+   `public/data/evolucao/`. Roda na sua máquina (o portal bloqueia servidores), baixa ~5 GB um estado por vez,
+   apaga cada arquivo depois de processar e precisa de um `tar` que leia zip (o do Windows ou `bsdtar`).
 
 ## Deploy (Vercel)
 
 1. Importe `pasimplicio/eleicoes` em vercel.com/new. O framework Vite é detectado e `vercel.json` já traz rotas,
    cabeçalhos de cache e limites das funções.
 2. Cada push na `main` gera um deploy de produção; PRs geram previews.
+3. Para o gráfico da evolução ao vivo, conecte um banco **Upstash Redis** ao projeto (Storage) antes da eleição.
 
 ## Fontes
 

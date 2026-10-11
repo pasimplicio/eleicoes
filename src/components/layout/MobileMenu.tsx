@@ -1,6 +1,6 @@
 // Menu lateral retrátil para celular e tablet (abaixo de lg). Usa <dialog> modal:
 // prende o foco, fecha com Esc, ao tocar no fundo, pelo botão ou ao escolher uma página.
-import { CaretDown, List, MapPin, X } from '@phosphor-icons/react'
+import { CaretDown, List, MapPin, Moon, Sun, X } from '@phosphor-icons/react'
 import { useEffect, useRef } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import type { NavEntry, NavItem } from '../../config/nav'
@@ -32,7 +32,17 @@ function Item({ item, onPick }: { item: NavItem; onPick: () => void }) {
   )
 }
 
-export function MobileMenu({ entries, ufYear }: { entries: NavEntry[]; ufYear?: number }) {
+export function MobileMenu({
+  entries,
+  ufYear,
+  dark,
+  onToggleTheme,
+}: {
+  entries: NavEntry[]
+  ufYear?: number
+  dark: boolean
+  onToggleTheme: () => void
+}) {
   const ref = useRef<HTMLDialogElement>(null)
   const { pathname } = useLocation()
 
@@ -49,7 +59,7 @@ export function MobileMenu({ entries, ufYear }: { entries: NavEntry[]; ufYear?: 
       <button
         type="button"
         onClick={abrir}
-        className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-md text-ink transition hover:bg-surface-2 lg:hidden"
+        className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-md text-ink transition hover:bg-surface-2 sm:h-11 sm:w-11 lg:hidden"
         aria-label="Abrir menu"
         aria-haspopup="dialog"
       >
@@ -121,6 +131,15 @@ export function MobileMenu({ entries, ufYear }: { entries: NavEntry[]; ufYear?: 
               )}
             </nav>
           </div>
+          {/* No celular o botão de tema fica aqui, para o cabeçalho caber em telas estreitas. */}
+          <button
+            type="button"
+            onClick={onToggleTheme}
+            className="mx-3 mb-2 flex min-h-12 shrink-0 cursor-pointer items-center gap-3 rounded-md px-3 text-[15px] font-medium text-ink-2 hover:bg-surface-2 hover:text-ink"
+          >
+            {dark ? <Sun className="h-5 w-5 text-muted" aria-hidden /> : <Moon className="h-5 w-5 text-muted" aria-hidden />}
+            {dark ? 'Usar tema claro' : 'Usar tema escuro'}
+          </button>
           <p className="shrink-0 border-t border-line px-6 py-4 text-xs text-muted">
             Dados oficiais do TSE. Portal independente.
           </p>

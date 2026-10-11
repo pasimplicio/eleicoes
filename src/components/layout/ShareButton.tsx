@@ -99,7 +99,7 @@ export function ShareButton() {
         aria-expanded={open}
         aria-controls={panelId}
         className={cn(
-          'flex h-11 w-11 cursor-pointer items-center justify-center rounded-md text-ink-2 transition hover:bg-surface-2 hover:text-ink',
+          'flex h-10 w-10 cursor-pointer items-center justify-center rounded-md text-ink-2 transition hover:bg-surface-2 hover:text-ink sm:h-11 sm:w-11',
           open && 'bg-surface-2 text-ink',
         )}
         aria-label="Compartilhar esta página"

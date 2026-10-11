@@ -5,12 +5,20 @@ import { currentYear, type Cycle, type ElectionIds, type Office, type Turn } fro
 import { CandidatesExplorer } from '../candidates/CandidatesExplorer'
 import { partyColor } from '../../config/parties'
 import { UF_BY_IBGE, UFS, type Region } from '../../config/ufs'
-import { leaderColor } from '../../lib/colors'
+import { leaderColor, shade } from '../../lib/colors'
 import { cn, fmtDateLong, fmtPct, slugify } from '../../lib/format'
 import type { ResultSummary } from '../../lib/tse/model'
 import { useQuery } from '@tanstack/react-query'
 import { aggregateResults } from '../../lib/tse/adapter'
-import { electionId, isRunoffPending, resultQuery, useResult, useUfResults } from '../../lib/tse/queries'
+import {
+  electionId,
+  isRunoffPending,
+  resultQuery,
+  useNationalMunicipalLeaders,
+  useResult,
+  useUfResults,
+  type CityLeader,
+} from '../../lib/tse/queries'
 import { EvolutionSection } from './EvolutionChart'
 import { LeadGap, ResultHeadline } from './Headline'
 import { RunoffPreview } from './Runoff'
@@ -63,7 +71,23 @@ export function NationalExplorer({ cycle, ids, office, turn, header }: Props) {
     else next.set('regiao', slugify(r))
     setSearch(next, { replace: true, preventScrollReset: true })
   }
-  const ufsInView = region === 'Brasil' ? UFS : UFS.filter((u) => u.regiao === region)
+  // Camada do mapa: estados (padrão) ou municípios. A malha e os resultados dos municípios só
+  // carregam quando alguém escolhe essa camada.
+  const layer: Layer = search.get('camada') === 'municipios' ? 'municipios' : 'estados'
+  const setLayer = (l: Layer) => {
+    const next = new URLSearchParams(search)
+    if (l === 'estados') next.delete('camada')
+    else next.set('camada', l)
+    setSearch(next, { replace: true, preventScrollReset: true })
+  }
+  const munTurn: Turn = runoffNational ? 1 : turn
+  const cities = useNationalMunicipalLeaders({ cycle, ids, office, turn: munTurn }, layer === 'municipios')
+  const cityHref = (ibge: string) => {
+    const c = cities.byIbge[ibge]
+    return c && `/${cycle.year}/${office.slug}/${c.uf.toLowerCase()}?turno=${turn}&municipio=${c.tse}`
+  }
+
+  const ufsInView = useMemo(() => (region === 'Brasil' ? UFS : UFS.filter((u) => u.regiao === region)), [region])
   const focus = region === 'Brasil' ? undefined : ufsInView.map((u) => u.ibge)
   const inView = Object.fromEntries(ufsInView.map((u) => [u.sigla, byUf[u.sigla]])) as ByUf
 
@@ -128,27 +152,70 @@ export function NationalExplorer({ cycle, ids, office, turn, header }: Props) {
         </div>
 
         <figure className="lg:sticky lg:top-24">
-          <div className="mb-4">
+          <div className="mb-4 flex flex-wrap gap-2">
             <Segmented<RegionFilter>
               label="Filtrar o mapa por região"
               value={region}
               onChange={setRegion}
               options={(['Brasil', ...REGIONS] as RegionFilter[]).map((r) => ({ value: r, label: r }))}
             />
+            <Segmented<Layer>
+              label="Camada do mapa"
+              value={layer}
+              onChange={setLayer}
+              options={[
+                { value: 'estados', label: 'Estados' },
+                { value: 'municipios', label: 'Municípios' },
+              ]}
+            />
           </div>
-          <ChoroplethMap
-            focus={focus}
-            src="/geo/br-uf.json"
-            label={`Mapa do Brasil com o candidato à frente em cada estado: ${office.name}, ${turn}º turno`}
-            fill={(code) => (pendingOf(UF_BY_IBGE[code]?.sigla) ? 'var(--runoff)' : leaderColor(byUf[UF_BY_IBGE[code]?.sigla]))}
-            name={(code) => {
-              const uf = UF_BY_IBGE[code]
-              const lead = byUf[uf.sigla]?.candidates[0]
-              return lead ? `${uf.nome}: ${lead.name} à frente com ${fmtPct(lead.pct)}` : uf.nome
-            }}
-            tooltip={(code) => <UfTooltip uf={UF_BY_IBGE[code].sigla} byUf={byUf} turn={turn} />}
-            onSelect={(code) => navigate(stateHref(UF_BY_IBGE[code].sigla))}
-          />
+          {layer === 'municipios' ? (
+            <div className="relative">
+              <ChoroplethMap
+                key="municipios"
+                focus={focus ? Object.keys(cities.byIbge).filter((c) => focus.includes(c.slice(0, 2))) : undefined}
+                src="/geo/br-mun.json"
+                overlay="/geo/br-uf.json"
+                label={`Mapa do Brasil com o candidato à frente em cada município: ${office.name}, ${munTurn}º turno`}
+                fill={(code) => {
+                  const l = cities.byIbge[code]?.top[0]
+                  return l && l.votes > 0 ? shade(partyColor(l.party), l.pct) : undefined
+                }}
+                name={(code) => cities.byIbge[code]?.nome ?? code}
+                tooltip={(code) => <CityTooltip city={cities.byIbge[code]} />}
+                onSelect={(code) => {
+                  const href = cityHref(code)
+                  if (href) navigate(href)
+                }}
+              />
+              {cities.loading && (
+                <p role="status" className="absolute top-2 left-2 rounded-md bg-surface/90 px-2.5 py-1 text-xs text-muted shadow-sm">
+                  Carregando municípios… {cities.loaded} de {UFS.length} estados
+                </p>
+              )}
+            </div>
+          ) : (
+            <ChoroplethMap
+              key="estados"
+              focus={focus}
+              src="/geo/br-uf.json"
+              label={`Mapa do Brasil com o candidato à frente em cada estado: ${office.name}, ${turn}º turno`}
+              fill={(code) => (pendingOf(UF_BY_IBGE[code]?.sigla) ? 'var(--runoff)' : leaderColor(byUf[UF_BY_IBGE[code]?.sigla]))}
+              name={(code) => {
+                const uf = UF_BY_IBGE[code]
+                const lead = byUf[uf.sigla]?.candidates[0]
+                return lead ? `${uf.nome}: ${lead.name} à frente com ${fmtPct(lead.pct)}` : uf.nome
+              }}
+              labels={(code) => {
+                const uf = UF_BY_IBGE[code]
+                if (pendingOf(uf.sigla)) return { text: uf.sigla, sub: '2º t.' }
+                const lead = byUf[uf.sigla]?.candidates[0]
+                return lead && lead.votes > 0 ? { text: uf.sigla, sub: `${Math.round(lead.pct)}%` } : { text: uf.sigla }
+              }}
+              tooltip={(code) => <UfTooltip uf={UF_BY_IBGE[code].sigla} byUf={byUf} turn={turn} />}
+              onSelect={(code) => navigate(stateHref(UF_BY_IBGE[code].sigla))}
+            />
+          )}
           <figcaption>
             {runoffNational && <p className="mb-2 text-sm text-muted">Mapa do 1º turno: o mais votado em cada estado.</p>}
             {!isNational && turn === 2 && UFS.some((u) => pendingOf(u.sigla)) && (
@@ -156,7 +223,11 @@ export function NationalExplorer({ cycle, ids, office, turn, header }: Props) {
                 <span className="h-3 w-3 rounded-sm bg-[var(--runoff)]" aria-hidden /> 2º turno em {fmtDateLong(cycle.dates[2])}
               </p>
             )}
-            <PartyLegend byUf={inView} />
+            {layer === 'municipios' ? (
+              <CityLegend byIbge={cities.byIbge} ufs={ufsInView} />
+            ) : (
+              <PartyLegend byUf={inView} />
+            )}
           </figcaption>
           {isNational && region === 'Brasil' && (
             <EvolutionSection
@@ -260,6 +331,61 @@ function countElectedByParty(byUf: ByUf) {
     for (const c of r?.candidates ?? []) if (c.elected) m.set(c.party, (m.get(c.party) ?? 0) + 1)
   }
   return [...m.entries()].sort((a, b) => b[1] - a[1])
+}
+
+type Layer = 'estados' | 'municipios'
+type City = CityLeader & { uf: string; tse: string; nome: string }
+
+function CityTooltip({ city }: { city?: City }) {
+  if (!city) return <span className="text-muted">Sem dados ainda</span>
+  return (
+    <div>
+      <div className="mb-2 flex items-baseline justify-between gap-2">
+        <span className="font-semibold">
+          {city.nome} <span className="font-normal text-muted">{city.uf}</span>
+        </span>
+        {city.sectionsPct < 100 && <span className="text-xs text-muted tabular">{fmtPct(city.sectionsPct)} apurado</span>}
+      </div>
+      <ul className="space-y-1.5">
+        {city.top.map((c, i) => (
+          <li key={c.number} className="flex items-center justify-between gap-2">
+            <span className="flex min-w-0 items-center gap-2">
+              <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: partyColor(c.party, i) }} />
+              <span className="truncate">{c.name}</span>
+            </span>
+            <span className="font-semibold tabular">{fmtPct(c.pct)}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+function CityLegend({ byIbge, ufs }: { byIbge: Record<string, City>; ufs: typeof UFS }) {
+  const inView = new Set(ufs.map((u) => u.sigla))
+  const counts = new Map<string, number>()
+  let final = true
+  for (const c of Object.values(byIbge)) {
+    if (!inView.has(c.uf) || !c.top[0]?.votes) continue
+    counts.set(c.top[0].party, (counts.get(c.top[0].party) ?? 0) + 1)
+    if (c.sectionsPct < 100) final = false
+  }
+  const list = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4)
+  if (!list.length) return null
+  return (
+    <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-ink-2">
+      {list.map(([party, n]) => (
+        <span key={party} className="inline-flex items-center gap-2">
+          <span className="h-3 w-3 rounded-sm" style={{ background: partyColor(party) }} aria-hidden />
+          <span>
+            <strong className="font-semibold text-ink">{party}</strong> {final ? '' : 'à frente '}em{' '}
+            {n.toLocaleString('pt-BR')} {n === 1 ? 'município' : 'municípios'}
+          </span>
+        </span>
+      ))}
+      <span className="text-muted">Clique num município para ver o resultado.</span>
+    </div>
+  )
 }
 
 function PartyLegend({ byUf }: { byUf: ByUf }) {
