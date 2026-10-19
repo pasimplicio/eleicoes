@@ -13,7 +13,7 @@ import { useSearchParams } from 'react-router-dom'
 import { Container, Segmented } from '../components/ui'
 import { findOffice, type Turn } from '../config/elections'
 import { partyColor } from '../config/parties'
-import { findUf, UFS } from '../config/ufs'
+import { findUf, inUf, UFS } from '../config/ufs'
 import { fmtInt, fmtPct } from '../lib/format'
 import { useFeaturedCycle } from '../lib/phase'
 import { useMunicipalities, useResult } from '../lib/tse/queries'
@@ -22,6 +22,28 @@ import { useMunicipalities, useResult } from '../lib/tse/queries'
 type Sec = [number, number, number?]
 /** [local, nome, endereço, bairro, lat, lng, zona, seções] */
 type Local = [number, string, string, string, number, number, number, Sec[]]
+
+type Visao = 'secoes' | 'mudancas'
+type TipoMudanca = 'turno' | 'original'
+/** [nome, endereço, bairro, lat, lng] */
+type LocalInfo = [string, string, string, number | null, number | null]
+/** [uf, mun TSE, município, zona, seção, aptos, tipo, antes, depois] (scripts/build-mudancas.mjs) */
+type Mudanca = [string, string, string, number, number, number, TipoMudanca, LocalInfo, LocalInfo]
+
+/** Move as seções que mudaram entre os turnos para o local do 2º turno. */
+function applyTurn2(locais: Local[], changes: Mudanca[]): Local[] {
+  if (!changes.length) return locais
+  const moved = new Map(changes.map((c) => [`${c[3]}-${c[4]}`, c]))
+  const out: Local[] = locais.map((l) => [...l.slice(0, 7), l[7].filter((s) => !moved.has(`${l[6]}-${s[0]}`))] as Local)
+  for (const c of changes) {
+    const [nome, endereco, bairro, lat, lng] = c[8]
+    if (lat === null || lng === null) continue
+    const existing = out.find((l) => l[6] === c[3] && l[4] === lat && l[5] === lng)
+    if (existing) existing[7].push([c[4], c[5]])
+    else out.push([0, nome, endereco, bairro, lat, lng, c[3], [[c[4], c[5]]]])
+  }
+  return out.filter((l) => l[7].length)
+}
 
 interface SecaoResultado {
   turno: number
@@ -72,6 +94,18 @@ const BASES: { name: string; url: string; attribution: string; subdomains?: stri
   },
 ]
 
+/** Mapa do Brasil com as visões do OpenStreetMap, escala e seletor de camadas. */
+function createBaseMap(el: HTMLElement): L.Map {
+  const m = L.map(el, { center: [-15.78, -47.93], zoom: 4 })
+  const layers = Object.fromEntries(
+    BASES.map((b) => [b.name, L.tileLayer(b.url, { attribution: b.attribution, subdomains: b.subdomains ?? 'abc', maxZoom: b.maxZoom })]),
+  )
+  layers[BASES[0].name].addTo(m)
+  L.control.layers(layers, undefined, { position: 'topright' }).addTo(m)
+  L.control.scale({ imperial: false }).addTo(m)
+  return m
+}
+
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!)
 const titleish = (s: string) => s.trim().replace(/\s+/g, ' ')
 
@@ -116,10 +150,28 @@ export function SectionsMapPage() {
     },
   })
 
-  const totalSecoes = useMemo(
-    () => (secoes.data?.locais ?? []).reduce((n, l) => n + l[7].filter((s) => !s[2]).length, 0),
-    [secoes.data],
-  )
+  const visao: Visao = params.get('visao') === 'mudancas' ? 'mudancas' : 'secoes'
+
+  // Seções que mudaram de local (dados abertos do TSE): visão própria e, no 2º turno, a
+  // posição certa das seções no mapa de votos.
+  const mudancas = useQuery({
+    queryKey: ['secoes-mudancas', cycle.year],
+    enabled: visao === 'mudancas' || turno === 2,
+    staleTime: Infinity,
+    queryFn: async () => {
+      const res = await fetch(`/data/secoes-${cycle.year}-mudancas.json`)
+      if (!res.ok || !res.headers.get('content-type')?.includes('json')) return null
+      return (await res.json()) as { geradoEm: string; mudancas: Mudanca[] }
+    },
+  })
+
+  const locais = useMemo(() => {
+    const base = secoes.data?.locais ?? []
+    if (turno !== 2 || !mudancas.data || !mun) return base
+    return applyTurn2(base, mudancas.data.mudancas.filter((m) => m[0] === uf.sigla.toLowerCase() && m[1] === mun.tse && m[6] === 'turno'))
+  }, [secoes.data, mudancas.data, turno, uf.sigla, mun])
+
+  const totalSecoes = useMemo(() => locais.reduce((n, l) => n + l[7].filter((s) => !s[2]).length, 0), [locais])
 
   return (
     <Container className="pt-6 pb-8 sm:pt-8 sm:pb-10">
@@ -128,11 +180,35 @@ export function SectionsMapPage() {
         <p className="text-sm text-muted">Eleições gerais de {cycle.year}, presidente</p>
         <h1 className="mt-1 font-serif text-4xl leading-tight font-semibold tracking-tight sm:text-5xl">Mapa das seções</h1>
         <p className="mt-3 leading-relaxed text-ink-2">
-          Cada ponto é uma seção eleitoral, no seu local de votação. Toque num ponto para ver os votos daquela urna,
-          tirados do boletim de urna oficial do TSE.
+          {visao === 'secoes'
+            ? 'Cada ponto é uma seção eleitoral, no seu local de votação. Toque num ponto para ver os votos daquela urna, tirados do boletim de urna oficial do TSE.'
+            : 'Seções que mudaram de local de votação, com o endereço antigo e o novo. Confira antes de sair de casa no dia 25.'}
         </p>
       </header>
 
+      <div className="mt-6">
+        <Segmented<Visao>
+          label="Visão do mapa"
+          value={visao}
+          onChange={(v) => set({ visao: v === 'mudancas' ? 'mudancas' : undefined })}
+          options={[
+            { value: 'secoes', label: 'Seções e votos' },
+            { value: 'mudancas', label: 'Mudanças de local' },
+          ]}
+        />
+      </div>
+
+      {visao === 'mudancas' ? (
+        <ChangesView
+          data={mudancas.data ?? null}
+          loading={mudancas.isLoading}
+          uf={params.get('uf')?.toLowerCase() ?? ''}
+          tipo={params.get('tipo') === 'original' ? 'original' : 'turno'}
+          onUf={(v) => set({ uf: v || undefined, mun: undefined })}
+          onTipo={(t) => set({ tipo: t === 'original' ? 'original' : undefined })}
+        />
+      ) : (
+      <>
       <div className="mt-6 flex flex-wrap items-end gap-4">
         <Select
           label="Estado"
@@ -168,12 +244,15 @@ export function SectionsMapPage() {
         {turno === 2 && ' Os boletins do 2º turno aparecem depois da votação de 25 de outubro.'}
       </p>
 
-      <SectionsMap locais={secoes.data?.locais ?? []} uf={uf.sigla} mun={mun?.tse} turno={turno} nomes={nomes} />
+      <SectionsMap locais={locais} uf={uf.sigla} mun={mun?.tse} turno={turno} nomes={nomes} />
 
       <p className="mt-3 text-xs text-muted">
         Locais e coordenadas: dados abertos do TSE (locais de votação). Votos: boletins de urna publicados pelo TSE. Seções
         agregadas não têm urna própria; seus votos estão no boletim da seção principal.
+        {turno === 2 && ' No 2º turno, as seções que mudaram de local aparecem no endereço novo.'}
       </p>
+      </>
+      )}
     </Container>
   )
 }
@@ -235,13 +314,7 @@ function SectionsMap({
 
   useEffect(() => {
     if (!el.current || map.current) return
-    const m = L.map(el.current, { center: [-15.78, -47.93], zoom: 4 })
-    const layers = Object.fromEntries(
-      BASES.map((b) => [b.name, L.tileLayer(b.url, { attribution: b.attribution, subdomains: b.subdomains ?? 'abc', maxZoom: b.maxZoom })]),
-    )
-    layers[BASES[0].name].addTo(m)
-    L.control.layers(layers, undefined, { position: 'topright' }).addTo(m)
-    L.control.scale({ imperial: false }).addTo(m)
+    const m = createBaseMap(el.current)
     cluster.current = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 48, spiderfyOnMaxZoom: true, showCoverageOnHover: false })
     m.addLayer(cluster.current)
     map.current = m
@@ -344,6 +417,180 @@ function SectionsMap({
       className="secoes-map mt-4 h-[70dvh] min-h-[420px] w-full overflow-hidden rounded-lg border border-line"
       role="region"
       aria-label="Mapa das seções eleitorais"
+    />
+  )
+}
+
+// ------------------------------------------------------------------ mudanças de local
+
+const distKm = (a: LocalInfo, b: LocalInfo) => {
+  if (a[3] === null || a[4] === null || b[3] === null || b[4] === null) return null
+  const r = (x: number) => (x * Math.PI) / 180
+  const dLat = r(b[3] - a[3])
+  const dLng = r(b[4] - a[4])
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(r(a[3])) * Math.cos(r(b[3])) * Math.sin(dLng / 2) ** 2
+  return 2 * 6371 * Math.asin(Math.sqrt(h))
+}
+const fmtDist = (km: number | null) =>
+  km === null ? '' : km < 1 ? `${Math.round(km * 1000)} m` : `${km.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} km`
+const placeHtml = (l: LocalInfo) =>
+  `<p class="sp-local">${esc(l[0] || 'Local não informado')}</p><p class="sp-end">${esc([l[1], l[2]].filter(Boolean).join(', '))}</p>`
+
+function ChangesView({
+  data,
+  loading,
+  uf,
+  tipo,
+  onUf,
+  onTipo,
+}: {
+  data: { geradoEm: string; mudancas: Mudanca[] } | null
+  loading: boolean
+  uf: string
+  tipo: TipoMudanca
+  onUf: (uf: string) => void
+  onTipo: (t: TipoMudanca) => void
+}) {
+  const all = useMemo(() => data?.mudancas ?? [], [data])
+  const count = (t: TipoMudanca) => all.filter((m) => m[6] === t && (!uf || m[0] === uf)).length
+  const list = useMemo(() => all.filter((m) => m[6] === tipo && (!uf || m[0] === uf)), [all, tipo, uf])
+  const eleitores = list.reduce((n, m) => n + m[5], 0)
+  const ufObj = uf ? findUf(uf) : undefined
+  /** "na Bahia", "em São Paulo", "no exterior" */
+  const ufNome = uf === 'zz' ? 'no exterior' : ufObj ? inUf(ufObj) : undefined
+  const porUf = useMemo(() => {
+    const c = new Map<string, number>()
+    for (const m of all) if (m[6] === tipo) c.set(m[0], (c.get(m[0]) ?? 0) + 1)
+    return [...c.entries()].sort((a, b) => b[1] - a[1])
+  }, [all, tipo])
+
+  return (
+    <>
+      <div className="mt-6 flex flex-wrap items-end gap-4">
+        <Select
+          label="Estado"
+          value={uf.toUpperCase()}
+          onChange={(v) => onUf(v.toLowerCase())}
+          options={[{ value: '', label: 'Todo o Brasil' }, ...UFS.map((u) => ({ value: u.sigla, label: u.nome }))]}
+        />
+        <div>
+          <p className="mb-1.5 text-sm font-medium">Mudança</p>
+          <Segmented<TipoMudanca>
+            label="Tipo de mudança"
+            value={tipo}
+            onChange={onTipo}
+            options={[
+              { value: 'turno', label: `Entre o 1º e o 2º turno (${fmtInt(count('turno'))})` },
+              { value: 'original', label: `Antes do 1º turno (${fmtInt(count('original'))})` },
+            ]}
+          />
+        </div>
+      </div>
+
+      <p className="mt-4 max-w-3xl text-sm text-muted" aria-live="polite">
+        {loading
+          ? 'Carregando mudanças…'
+          : tipo === 'turno'
+            ? `${fmtInt(list.length)} seções${ufNome ? ` ${ufNome}` : ''} votam em outro local no 2º turno, com ${fmtInt(eleitores)} eleitores. O ponto vazado é o local do 1º turno; o cheio, o do 2º turno.`
+            : `${fmtInt(list.length)} seções${ufNome ? ` ${ufNome}` : ''} já votavam fora do seu local original no 1º turno e continuam no novo local no 2º, com ${fmtInt(eleitores)} eleitores.`}
+      </p>
+      {!uf && porUf.length > 0 && (
+        <p className="mt-2 max-w-3xl text-xs leading-relaxed text-muted">
+          Por estado:{' '}
+          {porUf.map(([u, n], i) => (
+            <span key={u} className="whitespace-nowrap">
+              <button type="button" className="cursor-pointer font-medium text-ink-2 hover:underline" onClick={() => onUf(u)}>
+                {u === 'zz' ? 'Exterior' : u.toUpperCase()}
+              </button>{' '}
+              {fmtInt(n)}
+              {i < porUf.length - 1 ? ', ' : ''}
+            </span>
+          ))}
+        </p>
+      )}
+
+      <ChangesMap list={list} />
+
+      <p className="mt-3 text-xs text-muted">
+        Fonte: dados abertos do TSE, arquivo de locais de votação{data ? ` gerado em ${data.geradoEm}` : ''}, que traz o local
+        de cada seção em cada turno e o local original. A Justiça Eleitoral orienta todo eleitor a conferir o local no e-Título
+        ou no Autoatendimento Eleitoral.
+      </p>
+    </>
+  )
+}
+
+function ChangesMap({ list }: { list: Mudanca[] }) {
+  const el = useRef<HTMLDivElement>(null)
+  const map = useRef<L.Map | null>(null)
+  const layer = useRef<L.LayerGroup | null>(null)
+  const cluster = useRef<L.MarkerClusterGroup | null>(null)
+
+  useEffect(() => {
+    if (!el.current || map.current) return
+    const m = createBaseMap(el.current)
+    layer.current = L.layerGroup().addTo(m)
+    cluster.current = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 44, spiderfyOnMaxZoom: true, showCoverageOnHover: false })
+    m.addLayer(cluster.current)
+    map.current = m
+    return () => {
+      m.remove()
+      map.current = null
+    }
+  }, [])
+
+  useEffect(() => {
+    const m = map.current
+    if (!m || !layer.current || !cluster.current) return
+    layer.current.clearLayers()
+    cluster.current.clearLayers()
+    m.closePopup()
+    const bounds = L.latLngBounds([])
+    const markers: L.Layer[] = []
+    for (const c of list) {
+      const [sigla, , municipio, zona, secao, aptos, tipo, antes, depois] = c
+      if (depois[3] === null || depois[4] === null) continue
+      const to = L.latLng(depois[3], depois[4])
+      bounds.extend(to)
+      const km = tipo === 'turno' ? distKm(antes, depois) : null
+      const popup = `<div class="secao-pop">
+        <p class="sp-id">${esc(municipio)} (${sigla.toUpperCase()}), zona ${zona}, seção ${secao}, ${fmtInt(aptos)} eleitores</p>
+        <p class="sp-tag">${tipo === 'turno' ? 'Antes, no 1º turno' : 'Local original'}</p>
+        ${placeHtml(antes)}
+        ${tipo === 'original' ? '<p class="sp-end">Sem coordenadas no TSE para o local original.</p>' : ''}
+        <p class="sp-tag sp-new">${tipo === 'turno' ? 'Agora, no 2º turno' : 'Onde vota (1º e 2º turno)'}</p>
+        ${placeHtml(depois)}
+        ${km !== null ? `<p class="sp-foot">Distância entre os locais: ${fmtDist(km)}</p>` : ''}
+      </div>`
+      const marker = L.circleMarker(to, { radius: 8, weight: 2, color: '#ffffff', fillColor: tipo === 'turno' ? '#d9480f' : '#0e7c66', fillOpacity: 0.95 })
+      marker.bindPopup(popup, { maxWidth: 320, minWidth: 260 })
+      marker.bindTooltip(`<b>Seção ${secao}</b> · Zona ${zona}<br><span>${tipo === 'turno' ? 'mudou para ' : 'vota em '}${esc(depois[0])}</span>`, {
+        direction: 'top',
+        offset: [0, -8],
+        className: 'secao-tip',
+      })
+      markers.push(marker)
+      // Mudança entre turnos: local antigo vazado e linha tracejada até o novo.
+      if (tipo === 'turno' && antes[3] !== null && antes[4] !== null && (antes[3] !== depois[3] || antes[4] !== depois[4])) {
+        const from = L.latLng(antes[3], antes[4])
+        bounds.extend(from)
+        L.polyline([from, to], { color: '#d9480f', weight: 2, opacity: 0.7, dashArray: '5 6' }).addTo(layer.current)
+        L.circleMarker(from, { radius: 6, weight: 2, color: '#d9480f', fillColor: '#ffffff', fillOpacity: 1 })
+          .bindTooltip(`<b>Seção ${secao}</b> · local do 1º turno<br><span>${esc(antes[0])}</span>`, { direction: 'top', offset: [0, -6], className: 'secao-tip' })
+          .bindPopup(popup, { maxWidth: 320, minWidth: 260 })
+          .addTo(layer.current)
+      }
+    }
+    cluster.current.addLayers(markers)
+    if (bounds.isValid()) m.fitBounds(bounds.pad(0.06), { maxZoom: 15 })
+  }, [list])
+
+  return (
+    <div
+      ref={el}
+      className="secoes-map mt-4 h-[70dvh] min-h-[420px] w-full overflow-hidden rounded-lg border border-line"
+      role="region"
+      aria-label="Mapa das seções que mudaram de local de votação"
     />
   )
 }

@@ -332,3 +332,7 @@
 .map-callout polyline {
   stroke: var(--color-muted);
 }
+
+.secao-pop .sp-tag { margin-top: 10px; font-size: 11px; font-weight: 600; letter-spacing: .02em; color: var(--color-muted); text-transform: uppercase; }
+.secao-pop .sp-tag.sp-new { color: #d9480f; }
+.secao-pop .sp-foot { margin-top: 10px; }
