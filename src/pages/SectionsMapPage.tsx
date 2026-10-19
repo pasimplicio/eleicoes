@@ -514,7 +514,9 @@ function ChangesView({
       <p className="mt-3 text-xs text-muted">
         Fonte: dados abertos do TSE, arquivo de locais de votação{data ? ` gerado em ${data.geradoEm}` : ''}, que traz o local
         de cada seção em cada turno e o local original. A Justiça Eleitoral orienta todo eleitor a conferir o local no e-Título
-        ou no Autoatendimento Eleitoral.
+        ou no Autoatendimento Eleitoral. O TSE anunciou 4.352 seções com troca de local no 2º turno; nesta versão do arquivo,
+        os dados abertos trazem {fmtInt(all.filter((m) => m[6] === 'turno').length)} com local diferente entre os turnos. O mapa
+        será atualizado quando o TSE publicar o restante.
       </p>
     </>
   )
