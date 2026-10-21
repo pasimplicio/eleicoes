@@ -7,7 +7,7 @@ import 'leaflet.markercluster/dist/MarkerCluster.css'
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
 import L from 'leaflet'
 import 'leaflet.markercluster'
-import { useQuery } from '@tanstack/react-query'
+import { useQueries, useQuery } from '@tanstack/react-query'
 import { useEffect, useId, useMemo, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Container, Segmented } from '../components/ui'
@@ -29,6 +29,66 @@ type TipoMudanca = 'turno' | 'original'
 type LocalInfo = [string, string, string, number | null, number | null]
 /** [uf, mun TSE, município, zona, seção, aptos, tipo, antes, depois] (scripts/build-mudancas.mjs) */
 type Mudanca = [string, string, string, number, number, number, TipoMudanca, LocalInfo, LocalInfo]
+
+/** "21/10/2026 06:27:40" -> "20261021 06:27:40", comparável como texto */
+const sortable = (s: string) => `${s.slice(6, 10)}${s.slice(3, 5)}${s.slice(0, 2)}${s.slice(10)}`
+
+/** UFs do arquivo de locais de votação do TSE (inclui o exterior, "zz"). */
+const UF_LIST = [...UFS.map((u) => u.sigla.toLowerCase()), 'zz']
+
+interface ChangesData {
+  geradoEm: string
+  mudancas: Mudanca[]
+}
+
+/**
+ * Mudanças de local direto do TSE (api/locais-mudancas, uma UF por chamada, em paralelo).
+ * Se o TSE não responder, usa a última cópia publicada com o site e avisa.
+ */
+function useLiveChanges(ufs: string[]) {
+  const live = useQueries({
+    queries: ufs.map((uf) => ({
+      queryKey: ['locais-mudancas', uf],
+      staleTime: 5 * 60_000,
+      refetchInterval: 15 * 60_000,
+      retry: 1,
+      queryFn: async () => {
+        const res = await fetch(`/api/locais-mudancas?uf=${uf}`)
+        const body = await res.json()
+        if (!res.ok || body.erro) throw new Error(body.erro ?? `HTTP ${res.status}`)
+        return body as ChangesData & { uf: string }
+      },
+    })),
+  })
+  const failed = live.some((q) => q.isError)
+  const copy = useQuery({
+    queryKey: ['secoes-mudancas-copia'],
+    enabled: failed,
+    staleTime: Infinity,
+    queryFn: async () => {
+      const res = await fetch('/data/secoes-2026-mudancas.json')
+      return res.ok ? ((await res.json()) as ChangesData) : null
+    },
+  })
+  const done = live.filter((q) => q.data)
+  const data: ChangesData | null = !ufs.length
+    ? null
+    : failed && copy.data
+      ? { geradoEm: copy.data.geradoEm, mudancas: copy.data.mudancas.filter((m) => ufs.includes(m[0])) }
+      : done.length
+        ? {
+            // A versão mais recente entre as UFs carregadas (todas vêm da mesma versão do arquivo).
+            geradoEm: done.map((q) => q.data!.geradoEm).sort((a, b) => sortable(a).localeCompare(sortable(b))).at(-1) ?? '',
+            mudancas: done.flatMap((q) => q.data!.mudancas),
+          }
+        : null
+  return {
+    data,
+    loading: live.some((q) => q.isLoading) && !(failed && copy.data),
+    progress: ufs.length > 1 ? { done: done.length, total: ufs.length } : undefined,
+    fallback: failed && copy.data ? copy.data.geradoEm : undefined,
+  }
+}
 
 /** Move as seções que mudaram entre os turnos para o local do 2º turno. */
 function applyTurn2(locais: Local[], changes: Mudanca[]): Local[] {
@@ -154,16 +214,11 @@ export function SectionsMapPage() {
 
   // Seções que mudaram de local (dados abertos do TSE): visão própria e, no 2º turno, a
   // posição certa das seções no mapa de votos.
-  const mudancas = useQuery({
-    queryKey: ['secoes-mudancas', cycle.year],
-    enabled: visao === 'mudancas' || turno === 2,
-    staleTime: Infinity,
-    queryFn: async () => {
-      const res = await fetch(`/data/secoes-${cycle.year}-mudancas.json`)
-      if (!res.ok || !res.headers.get('content-type')?.includes('json')) return null
-      return (await res.json()) as { geradoEm: string; mudancas: Mudanca[] }
-    },
-  })
+  // Dados sempre do TSE: na visão de mudanças, todas as UFs (ou a escolhida); no mapa de votos
+  // do 2º turno, só a UF aberta.
+  const ufParam = params.get('uf')?.toLowerCase() ?? ''
+  const mudancasUfs = visao === 'mudancas' ? (ufParam ? [ufParam] : UF_LIST) : turno === 2 ? [uf.sigla.toLowerCase()] : []
+  const mudancas = useLiveChanges(mudancasUfs)
 
   const locais = useMemo(() => {
     const base = secoes.data?.locais ?? []
@@ -200,8 +255,10 @@ export function SectionsMapPage() {
 
       {visao === 'mudancas' ? (
         <ChangesView
-          data={mudancas.data ?? null}
-          loading={mudancas.isLoading}
+          data={mudancas.data}
+          loading={mudancas.loading}
+          progress={mudancas.progress}
+          fallback={mudancas.fallback}
           uf={params.get('uf')?.toLowerCase() ?? ''}
           tipo={params.get('tipo') === 'original' ? 'original' : 'turno'}
           onUf={(v) => set({ uf: v || undefined, mun: undefined })}
@@ -439,13 +496,18 @@ const placeHtml = (l: LocalInfo) =>
 function ChangesView({
   data,
   loading,
+  progress,
+  fallback,
   uf,
   tipo,
   onUf,
   onTipo,
 }: {
-  data: { geradoEm: string; mudancas: Mudanca[] } | null
+  data: ChangesData | null
   loading: boolean
+  progress?: { done: number; total: number }
+  /** Data da cópia usada quando o TSE não responde. */
+  fallback?: string
   uf: string
   tipo: TipoMudanca
   onUf: (uf: string) => void
@@ -487,9 +549,17 @@ function ChangesView({
         </div>
       </div>
 
+      {fallback && (
+        <p className="mt-4 max-w-3xl rounded-md border border-line bg-surface-2 px-3 py-2 text-sm text-ink-2">
+          O TSE não respondeu agora. Mostrando a última cópia do arquivo oficial, gerada em {fallback}; a página tenta de novo
+          sozinha.
+        </p>
+      )}
       <p className="mt-4 max-w-3xl text-sm text-muted" aria-live="polite">
         {loading
-          ? 'Carregando mudanças…'
+          ? progress
+            ? `Lendo o arquivo do TSE: ${progress.done} de ${progress.total} estados…`
+            : 'Lendo o arquivo do TSE…'
           : tipo === 'turno'
             ? `${fmtInt(list.length)} seções${ufNome ? ` ${ufNome}` : ''} votam em outro local no 2º turno, com ${fmtInt(eleitores)} eleitores. O ponto vazado é o local do 1º turno; o cheio, o do 2º turno.`
             : `${fmtInt(list.length)} seções${ufNome ? ` ${ufNome}` : ''} já votavam fora do seu local original no 1º turno e continuam no novo local no 2º, com ${fmtInt(eleitores)} eleitores.`}
@@ -512,11 +582,9 @@ function ChangesView({
       <ChangesMap list={list} />
 
       <p className="mt-3 text-xs text-muted">
-        Fonte: dados abertos do TSE, arquivo de locais de votação{data ? ` gerado em ${data.geradoEm}` : ''}, que traz o local
-        de cada seção em cada turno e o local original. A Justiça Eleitoral orienta todo eleitor a conferir o local no e-Título
-        ou no Autoatendimento Eleitoral. O TSE anunciou 4.352 seções com troca de local no 2º turno; nesta versão do arquivo,
-        os dados abertos trazem {fmtInt(all.filter((m) => m[6] === 'turno').length)} com local diferente entre os turnos. O mapa
-        será atualizado quando o TSE publicar o restante.
+        Fonte: arquivo de locais de votação dos dados abertos do TSE, lido direto do TSE
+        {data ? ` (versão gerada pelo TSE em ${data.geradoEm})` : ''}. A página busca a versão mais nova sozinha a cada 15
+        minutos. A Justiça Eleitoral orienta todo eleitor a conferir o local no e-Título ou no Autoatendimento Eleitoral.
       </p>
     </>
   )

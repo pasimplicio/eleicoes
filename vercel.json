@@ -77,6 +77,10 @@
     },
     "api/secao.ts": {
       "maxDuration": 20
+    },
+    "api/locais-mudancas.ts": {
+      "maxDuration": 60,
+      "memory": 1024
     }
   },
   "regions": [
