@@ -1,0 +1,55 @@
+# Mantém os dados de locais de votação iguais aos do TSE.
+# A cada hora, baixa o arquivo oficial de locais de votação dos dados abertos do TSE,
+# regenera public/data/secoes-<ano>-mudancas.json e, se algo mudou, grava no repositório.
+# O push dispara a publicação na Vercel, como qualquer outra atualização do site.
+name: Atualizar locais de votação (TSE)
+
+on:
+  schedule:
+    - cron: '7 * * * *' # todo hora, no minuto 7 (UTC)
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: atualizar-locais
+  cancel-in-progress: false
+
+jobs:
+  atualizar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      ANO: '2026'
+      URL: https://cdn.tse.jus.br/estatistica/sead/odsele/eleitorado_locais_votacao/eleitorado_local_votacao_2026.zip
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Baixar arquivo oficial do TSE
+        run: |
+          curl -fsSL --retry 3 --retry-delay 20 -A "Mozilla/5.0 (ApuracaoBrasil; +https://github.com/pasimplicio/eleicoes)" \
+            -D headers.txt -o lv.zip "$URL"
+          grep -i '^last-modified' headers.txt || true
+          ls -la lv.zip
+          mkdir -p lv && unzip -q -o lv.zip -d lv && rm -f lv/*BRASIL* lv.zip
+
+      - name: Regenerar mudanças de local
+        run: node scripts/build-mudancas.mjs lv "$ANO"
+
+      - name: Gravar se os dados mudaram
+        run: |
+          if git diff --quiet -- public/data; then
+            echo "Sem mudanças nos dados do TSE."
+            exit 0
+          fi
+          GERADO=$(node -e "console.log(JSON.parse(require('fs').readFileSync('public/data/secoes-${ANO}-mudancas.json','utf8')).geradoEm)")
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/data
+          git commit -m "data: locais de votação pelo arquivo do TSE de ${GERADO}"
+          git push
